@@ -38,7 +38,7 @@ func LoadConfig(configPath string) (*Config, error) {
 		return nil, err
 	}
 
-	body := []byte{}
+	var body []byte
 	for _, file := range files {
 		content, err := ioutil.ReadFile(path.Join(configPath, file.Name()))
 		if err != nil {

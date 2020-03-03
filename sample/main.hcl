@@ -1,6 +1,6 @@
 terrafire {
   backend "s3" {
-    bucket = "..."
-    key    = "..."
+    bucket = "state_bucket"
+    key    = "state_file"
   }
 }

@@ -1,15 +1,15 @@
 terraform_deploy "system" {
   source {
-    owner    = "terrafire-dev"
+    owner    = "terrafire"
     repo     = "terraform"
-    path     = "aws/system/"
+    path     = "system/"
     revision = "xxxx"
   }
 
   workspace   = "dev"
 
   vars = {
-    "cluster_common_revision"          = "xxx"
+    "package_revision"          = "xxx"
   }
 }
 

@@ -1,8 +1,8 @@
-terraform_deploy "app_a" {
+terraform_deploy "app" {
   source {
     owner    = "terrafire"
     repo     = "terraform"
-    path     = "aws/app/"
+    path     = "app/"
     revision = "xxxx"
   }
 
@@ -15,7 +15,7 @@ terraform_deploy "app_a" {
   }
 
   var_files = [
-    "./app_a/variables.tfvars",
-    "./app_a/secrets.tfvars.enc" # 末尾が enc だったら sops で復号
+    "./app/variables.tfvars",
+    "./app/secrets.tfvars.enc" # 末尾が enc だったら sops で復号
   ]
 }
