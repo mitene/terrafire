@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/mitene/terrafire/terrafire"
 	"log"
+
+	"github.com/mitene/terrafire/terrafire"
 )
 
 func main() {
-	v, err := terrafire.DecodeFile("sample/main.hcl")
+	v, err := terrafire.LoadConfig("./sample")
 	if err != nil {
 		log.Fatal(err)
 	}
