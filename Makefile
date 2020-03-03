@@ -8,4 +8,9 @@ test:
 
 .PHONY: run
 run:
-	go run ./cmd/terrafire/
+	go run ./cmd/terrafire
+
+.PHONY: fmt
+fmt:
+	go fmt ./cmd/terrafire
+	go fmt ./terrafire
