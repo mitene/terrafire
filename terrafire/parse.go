@@ -1,10 +1,11 @@
 package terrafire
 
 import (
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/hcl/v2/gohcl"
+	"github.com/hashicorp/hcl/v2/hclparse"
 	"io/ioutil"
-	"path"
-
-	"github.com/hashicorp/hcl/v2/hclsimple"
+	"path/filepath"
 )
 
 type Config struct {
@@ -30,27 +31,39 @@ type Config struct {
 	} `hcl:"terraform_deploy,block"`
 }
 
-func LoadConfig(configPath string) (*Config, error) {
+// Parse all `*.hcl` files in the given directory.
+func LoadConfig(dirPath string) (*Config, error) {
+	files, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var bodies []hcl.Body
+	diags := hcl.Diagnostics{}
+	parser := hclparse.NewParser()
+	for _, file := range files {
+		fileName := file.Name()
+
+		if suffix := filepath.Ext(fileName); suffix != ".hcl" {
+			continue
+		}
+
+		f, d := parser.ParseHCLFile(filepath.Join(dirPath, fileName))
+		if f != nil {
+			bodies = append(bodies, f.Body)
+		}
+		diags = diags.Extend(d)
+	}
+	if diags.HasErrors() {
+		return nil, diags
+	}
+
 	var config Config
 
-	files, err := ioutil.ReadDir(configPath)
-	if err != nil {
-		return nil, err
-	}
-
-	var body []byte
-	for _, file := range files {
-		content, err := ioutil.ReadFile(path.Join(configPath, file.Name()))
-		if err != nil {
-			return nil, err
-		}
-		body = append(body, content...)
-		body = append(body, []byte("\n")...)
-	}
-
-	err = hclsimple.Decode("dummy.hcl", body, nil, &config)
-	if err != nil {
-		return nil, err
+	merged := hcl.MergeBodies(bodies)
+	diags = gohcl.DecodeBody(merged, nil, &config)
+	if diags.HasErrors() {
+		return nil, diags
 	}
 
 	return &config, nil

@@ -43,4 +43,3 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("terraform_deploy[1].vars[\"package_revision\"]: want xxx, got %s", v.TerraformDeploy[1].Vars["package_revision"])
 	}
 }
-
