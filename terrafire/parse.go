@@ -43,8 +43,8 @@ func LoadConfig(dirPath string) (*Config, error) {
 	parser := hclparse.NewParser()
 	for _, file := range files {
 		fileName := file.Name()
-		suffix := filepath.Ext(fileName)
-		if suffix != ".hcl" {
+
+		if suffix := filepath.Ext(fileName); suffix != ".hcl" {
 			continue
 		}
 
