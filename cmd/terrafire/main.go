@@ -2,9 +2,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/mitene/terrafire"
 	"log"
-
-	"github.com/mitene/terrafire/terrafire"
 )
 
 func main() {

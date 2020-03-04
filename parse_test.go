@@ -8,7 +8,7 @@ import (
 
 func TestLoadConfig(t *testing.T) {
 	cwd, _ := os.Getwd()
-	v, err := LoadConfig(path.Join(cwd, "..", "sample"))
+	v, err := LoadConfig(path.Join(cwd, "sample"))
 	if err != nil {
 		t.Fatal(err)
 	}

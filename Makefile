@@ -4,7 +4,7 @@ build:
 
 .PHONY: test
 test:
-	go test ./terrafire
+	go test .
 
 .PHONY: run
 run:
@@ -13,4 +13,4 @@ run:
 .PHONY: fmt
 fmt:
 	go fmt ./cmd/terrafire
-	go fmt ./terrafire
+	go fmt .
