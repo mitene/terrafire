@@ -14,7 +14,7 @@ type GithubClient interface {
 	GetSource(owner string, repo string, ref string) (io.ReadCloser, error)
 }
 
-type GithubClientImpl struct{
+type GithubClientImpl struct {
 	client *github.Client
 }
 
