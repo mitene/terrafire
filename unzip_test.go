@@ -9,15 +9,22 @@ import (
 
 func TestUnzip(t *testing.T) {
 	tempDir, err := ioutil.TempDir("", "")
-	defer os.RemoveAll(tempDir)
-
 	if err != nil {
 		t.Fatalf("can't create temp directory: %s", err)
 	}
-	err = Unzip("./sample/terraform.zip", tempDir)
+	defer os.RemoveAll(tempDir)
+
+	file, err := os.Open("./sample/terraform.zip")
+	if err != nil {
+		t.Fatalf("failed to open file: %s", err)
+	}
+	defer file.Close()
+
+	err = Unzip(file, tempDir)
 	if err != nil {
 		t.Fatalf("unzip fail: %s", err)
 	}
+
 	_, err = os.Stat(filepath.Join(tempDir, "terraform", "test.tf"))
 	if err != nil {
 		t.Fatalf("file not found: %s", err)
