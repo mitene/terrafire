@@ -3,18 +3,29 @@ package terrafire
 import (
 	"archive/zip"
 	"context"
-	"github.com/google/go-github/v29/github"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/google/go-github/v29/github"
+	"golang.org/x/oauth2"
 )
 
 // TODO: GET CLEAN!!!
 func GetSource(owner string, repo string, ref string) error {
-	client := github.NewClient(nil)
-	url, _, err := client.Repositories.GetArchiveLink(context.Background(), owner, repo, github.Zipball, nil, true)
+	ctx := context.Background()
+	ts := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: os.Getenv("GITHUB_ACCESS_TOKEN")},
+	)
+	tc := oauth2.NewClient(ctx, ts)
+	client := github.NewClient(tc)
+
+	opt := github.RepositoryContentGetOptions{
+		Ref: ref,
+	}
+	url, _, err := client.Repositories.GetArchiveLink(context.Background(), owner, repo, github.Zipball, &opt, true)
 	if err != nil {
 		return err
 	}
