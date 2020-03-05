@@ -1,27 +1,19 @@
 package terrafire
 
 import (
-	"archive/zip"
 	"context"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/google/go-github/v29/github"
 	"golang.org/x/oauth2"
 )
 
 // TODO: GET CLEAN!!!
-func GetSource(owner string, repo string, ref string) error {
-	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: os.Getenv("GITHUB_ACCESS_TOKEN")},
-	)
-	tc := oauth2.NewClient(ctx, ts)
-	client := github.NewClient(tc)
-
+func GetSource(owner string, repo string, ref string, dest string) error {
+	client := newGithubClient()
 	opt := github.RepositoryContentGetOptions{
 		Ref: ref,
 	}
@@ -48,41 +40,21 @@ func GetSource(owner string, repo string, ref string) error {
 
 	tmpfile.Close()
 
-	Unzip(tmpfile.Name(), "out")
+	Unzip(tmpfile.Name(), dest)
 
 	return nil
 }
 
-func Unzip(src, dest string) error {
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
-		defer rc.Close()
-
-		if f.FileInfo().IsDir() {
-			path := filepath.Join(dest, f.Name)
-			os.MkdirAll(path, f.Mode())
-		} else {
-			buf := make([]byte, f.UncompressedSize)
-			_, err = io.ReadFull(rc, buf)
-			if err != nil {
-				return err
-			}
-
-			path := filepath.Join(dest, f.Name)
-			if err = ioutil.WriteFile(path, buf, f.Mode()); err != nil {
-				return err
-			}
-		}
+func newGithubClient() *github.Client {
+	token, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
+	var tc *http.Client
+	if ok {
+		ctx := context.Background()
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		tc = oauth2.NewClient(ctx, ts)
 	}
 
-	return nil
+	return github.NewClient(tc)
 }

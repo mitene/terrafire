@@ -1,7 +1,17 @@
 package main
 
-import "github.com/mitene/terrafire"
+import (
+	"fmt"
+	"io/ioutil"
+
+	"github.com/mitene/terrafire"
+)
 
 func main() {
-	terrafire.GetSource("maychannel-dev", "terraform", "master")
+	tempDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		return
+	}
+	fmt.Println(tempDir)
+	terrafire.GetSource("maychannel-dev", "terraform", "master", tempDir)
 }
