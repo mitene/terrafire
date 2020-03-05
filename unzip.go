@@ -8,8 +8,24 @@ import (
 	"path/filepath"
 )
 
-func Unzip(src, dest string) error {
-	r, err := zip.OpenReader(src)
+func Unzip(src io.Reader, dest string) error {
+
+	tmpfile, err := ioutil.TempFile("", "")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmpfile.Name()) // clean up
+
+	_, err = io.Copy(tmpfile, src)
+	if err != nil {
+		return err
+	}
+
+	if err = tmpfile.Close(); err != nil {
+		return err
+	}
+
+	r, err := zip.OpenReader(tmpfile.Name())
 	if err != nil {
 		return err
 	}
@@ -26,7 +42,7 @@ func Unzip(src, dest string) error {
 			path := filepath.Join(dest, f.Name)
 			os.MkdirAll(path, f.Mode())
 		} else {
-			buf := make([]byte, f.UncompressedSize)
+			buf := make([]byte, f.UncompressedSize64)
 			_, err = io.ReadFull(rc, buf)
 			if err != nil {
 				return err

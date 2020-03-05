@@ -3,7 +3,6 @@ package terrafire
 import (
 	"context"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -11,38 +10,27 @@ import (
 	"golang.org/x/oauth2"
 )
 
+type GithubClient interface {
+	GetSource()
+}
+
 // TODO: GET CLEAN!!!
-func GetSource(owner string, repo string, ref string, dest string) error {
+func GetSource(owner string, repo string, ref string, dest string) (io.ReadCloser, error) {
 	client := newGithubClient()
 	opt := github.RepositoryContentGetOptions{
 		Ref: ref,
 	}
 	url, _, err := client.Repositories.GetArchiveLink(context.Background(), owner, repo, github.Zipball, &opt, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	resp, err := http.Get(url.String())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	tmpfile, err := ioutil.TempFile("", "")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmpfile.Name()) // clean up
-
-	_, err = io.Copy(tmpfile, resp.Body)
-	if err != nil {
-		return err
-	}
-
-	tmpfile.Close()
-
-	Unzip(tmpfile.Name(), dest)
-
-	return nil
+	return resp.Body, nil
 }
 
 func newGithubClient() *github.Client {
