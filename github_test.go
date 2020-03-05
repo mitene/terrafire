@@ -20,7 +20,8 @@ func TestUnzip(t *testing.T) {
 	}
 	defer file.Close()
 
-	err = Unzip(file, tempDir)
+	client := &GithubClientImpl{}
+	err = client.extract(file, tempDir)
 	if err != nil {
 		t.Fatalf("unzip fail: %s", err)
 	}

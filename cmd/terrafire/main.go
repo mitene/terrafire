@@ -1,10 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"log"
-
 	"github.com/mitene/terrafire"
+	"log"
 )
 
 func main() {
@@ -13,5 +11,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print(buf)
+	terrafire.Unzip(buf, "out")
 }
