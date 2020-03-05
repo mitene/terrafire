@@ -11,29 +11,14 @@ import (
 )
 
 type GithubClient interface {
-	GetSource()
+	GetSource(owner string, repo string, ref string) (io.ReadCloser, error)
 }
 
-// TODO: GET CLEAN!!!
-func GetSource(owner string, repo string, ref string, dest string) (io.ReadCloser, error) {
-	client := newGithubClient()
-	opt := github.RepositoryContentGetOptions{
-		Ref: ref,
-	}
-	url, _, err := client.Repositories.GetArchiveLink(context.Background(), owner, repo, github.Zipball, &opt, true)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := http.Get(url.String())
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Body, nil
+type GithubClientImpl struct{
+	client *github.Client
 }
 
-func newGithubClient() *github.Client {
+func NewGithubClient() GithubClient {
 	token, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
 	var tc *http.Client
 	if ok {
@@ -44,5 +29,25 @@ func newGithubClient() *github.Client {
 		tc = oauth2.NewClient(ctx, ts)
 	}
 
-	return github.NewClient(tc)
+	return &GithubClientImpl{
+		client: github.NewClient(tc),
+	}
+}
+
+func (c *GithubClientImpl) GetSource(owner string, repo string, ref string) (io.ReadCloser, error) {
+	opt := github.RepositoryContentGetOptions{
+		Ref: ref,
+	}
+
+	url, _, err := c.client.Repositories.GetArchiveLink(context.Background(), owner, repo, github.Zipball, &opt, true)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Get(url.String())
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Body, nil
 }

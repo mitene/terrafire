@@ -2,16 +2,16 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"log"
 
 	"github.com/mitene/terrafire"
 )
 
 func main() {
-	tempDir, err := ioutil.TempDir("", "")
+	client := terrafire.NewGithubClient()
+	buf, err := client.GetSource("maychannel-dev", "terraform", "master")
 	if err != nil {
-		return
+		log.Fatal(err)
 	}
-	fmt.Println(tempDir)
-	terrafire.GetSource("maychannel-dev", "terraform", "master", tempDir)
+	fmt.Print(buf)
 }
