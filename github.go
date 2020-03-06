@@ -95,6 +95,10 @@ func (*GithubClientImpl) extract(src io.Reader, subDir string, dest string) erro
 			continue
 		}
 
+		if filename, err = filepath.Rel(subDir, filename); err != nil {
+			return err
+		}
+
 		if f.FileInfo().IsDir() {
 			p := filepath.Join(dest, filename)
 			os.MkdirAll(p, f.Mode())

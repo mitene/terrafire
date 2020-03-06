@@ -21,12 +21,12 @@ func TestUnzip(t *testing.T) {
 	defer file.Close()
 
 	client := &GithubClientImpl{}
-	err = client.extract(file, tempDir)
+	err = client.extract(file, "subdir", tempDir)
 	if err != nil {
 		t.Fatalf("unzip fail: %s", err)
 	}
 
-	_, err = os.Stat(filepath.Join(tempDir, "terraform", "test.tf"))
+	_, err = os.Stat(filepath.Join(tempDir, "test.tf"))
 	if err != nil {
 		t.Fatalf("file not found: %s", err)
 	}
