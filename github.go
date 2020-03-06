@@ -8,13 +8,14 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/go-github/v29/github"
 	"golang.org/x/oauth2"
 )
 
 type GithubClient interface {
-	GetSource(owner string, repo string, ref string) (io.ReadCloser, error)
+	GetSource(owner string, repo string, ref string, subDir string, dest string) error
 }
 
 type GithubClientImpl struct {
@@ -37,27 +38,30 @@ func NewGithubClient() GithubClient {
 	}
 }
 
-func (c *GithubClientImpl) GetSource(owner string, repo string, ref string) (io.ReadCloser, error) {
+func (c *GithubClientImpl) GetSource(owner string, repo string, ref string, subDir string, dest string) error {
 	opt := github.RepositoryContentGetOptions{
 		Ref: ref,
 	}
 
 	url, _, err := c.client.Repositories.GetArchiveLink(context.Background(), owner, repo, github.Zipball, &opt, true)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	resp, err := http.Get(url.String())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	resp.Header.Write(os.Stdout)
+	err = c.extract(resp.Body, subDir, dest)
+	if err != nil {
+		return err
+	}
 
-	return resp.Body, nil
+	return nil
 }
 
-func (*GithubClientImpl) extract(src io.Reader, dest string) error {
+func (*GithubClientImpl) extract(src io.Reader, subDir string, dest string) error {
 	tmpfile, err := ioutil.TempFile("", "")
 	if err != nil {
 		return err
@@ -86,9 +90,14 @@ func (*GithubClientImpl) extract(src io.Reader, dest string) error {
 		}
 		defer rc.Close()
 
+		filename := filepath.Join(strings.Split(f.Name, string(os.PathSeparator))[1:]...)
+		if !strings.HasPrefix(filename, subDir) {
+			continue
+		}
+
 		if f.FileInfo().IsDir() {
-			path := filepath.Join(dest, f.Name)
-			os.MkdirAll(path, f.Mode())
+			p := filepath.Join(dest, filename)
+			os.MkdirAll(p, f.Mode())
 		} else {
 			buf := make([]byte, f.UncompressedSize64)
 			_, err = io.ReadFull(rc, buf)
@@ -96,8 +105,8 @@ func (*GithubClientImpl) extract(src io.Reader, dest string) error {
 				return err
 			}
 
-			path := filepath.Join(dest, f.Name)
-			if err = ioutil.WriteFile(path, buf, f.Mode()); err != nil {
+			p := filepath.Join(dest, filename)
+			if err = ioutil.WriteFile(p, buf, f.Mode()); err != nil {
 				return err
 			}
 		}

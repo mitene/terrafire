@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/mitene/terrafire"
 	"log"
+
+	"github.com/mitene/terrafire"
 )
 
 func main() {
 	client := terrafire.NewGithubClient()
-	buf, err := client.GetSource("maychannel-dev", "terraform", "master")
+	err := client.GetSource("maychannel-dev", "terraform", "master", "aws/main", "out")
 	if err != nil {
 		log.Fatal(err)
 	}
-	terrafire.Unzip(buf, "out")
 }
