@@ -84,12 +84,6 @@ func (*GithubClientImpl) extract(src io.Reader, subDir string, dest string) erro
 	defer r.Close()
 
 	for _, f := range r.File {
-		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
-		defer rc.Close()
-
 		filename := filepath.Join(strings.Split(f.Name, string(os.PathSeparator))[1:]...)
 		if !strings.HasPrefix(filename, subDir) {
 			continue
@@ -99,18 +93,33 @@ func (*GithubClientImpl) extract(src io.Reader, subDir string, dest string) erro
 			return err
 		}
 
+		path := filepath.Join(dest, filename)
+
 		if f.FileInfo().IsDir() {
-			p := filepath.Join(dest, filename)
-			os.MkdirAll(p, f.Mode())
-		} else {
-			buf := make([]byte, f.UncompressedSize64)
-			_, err = io.ReadFull(rc, buf)
+			err = os.MkdirAll(path, f.Mode())
 			if err != nil {
 				return err
 			}
+		} else {
+			err = func() error {
+				rc, err := f.Open()
+				if err != nil {
+					return err
+				}
+				defer rc.Close()
 
-			p := filepath.Join(dest, filename)
-			if err = ioutil.WriteFile(p, buf, f.Mode()); err != nil {
+				d, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, f.Mode())
+				if err != nil {
+					return err
+				}
+				defer d.Close()
+
+				if _, err = io.Copy(d, rc); err != nil {
+					return err
+				}
+				return nil
+			}()
+			if err != nil {
 				return err
 			}
 		}
