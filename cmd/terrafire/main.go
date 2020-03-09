@@ -1,21 +1,24 @@
 package main
 
 import (
-	"log"
-
-	"github.com/mitene/terrafire"
+	"flag"
+	"fmt"
 )
 
 func main() {
-	client := terrafire.NewGithubClient()
-	err := client.GetSource("maychannel-dev", "terraform", "terrafire-test", "aws/test", "out")
-	if err != nil {
-		log.Fatal(err)
-	}
+	flag.Parse()
+	args := flag.Args()
 
-	tc := terrafire.NewTerraformClient("out")
-	err = tc.Plan()
-	if err != nil {
-		log.Fatal(err)
-	}
+	fmt.Println(args)
+	//client := terrafire.NewGithubClient()
+	//err := client.GetSource("maychannel-dev", "terraform", "terrafire-test", "aws/test", "out")
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//
+	//tc := terrafire.NewTerraformClient("out")
+	//err = tc.Plan()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
 }
