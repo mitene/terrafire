@@ -2,15 +2,14 @@ package terrafire
 
 import (
 	"io/ioutil"
-	"os"
 )
 
 type Runner interface {
-	Plan() error
+	Plan(dir string) error
 }
 
 type RunnerImpl struct {
-	github GithubClient
+	github    GithubClient
 	terraform TerraformClient
 }
 
@@ -21,13 +20,8 @@ func NewRunner(github GithubClient, terraform TerraformClient) Runner {
 	}
 }
 
-func (r *RunnerImpl) Plan() error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
-	cfg, err := LoadConfig(cwd)
+func (r *RunnerImpl) Plan(dir string) error {
+	cfg, err := LoadConfig(dir)
 	if err != nil {
 		return err
 	}

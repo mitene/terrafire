@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/mitene/terrafire"
 	"log"
+	"os"
+
+	"github.com/mitene/terrafire"
 )
 
 func main() {
@@ -16,12 +18,20 @@ func main() {
 		log.Fatalln("error!!!!")
 	}
 
-	runner := terrafire.NewRunner()
+	runner := terrafire.NewRunner(
+		terrafire.NewGithubClient(),
+		terrafire.NewTerraformClient(),
+	)
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	action := args[0]
 	switch action {
 	case "plan":
-		err := runner.Plan()
+		err := runner.Plan(cwd)
 		if err != nil {
 			log.Fatalln(err)
 		}
