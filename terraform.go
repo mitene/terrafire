@@ -1,7 +1,7 @@
 package terrafire
 
 import (
-	"fmt"
+	"os"
 	"os/exec"
 )
 
@@ -26,30 +26,26 @@ func (t *TerraformClientImpl) Plan() error {
 		return err
 	}
 
-	cmd := exec.Command("terraform", "plan")
-	cmd.Dir = t.dir
-	out, err := cmd.Output()
-	fmt.Println(string(out))
-	return err
-}
-
-func (t *TerraformClientImpl) init() error {
-	cmd := exec.Command("terraform", "init")
-	cmd.Dir = t.dir
-	out, err := cmd.Output()
-	fmt.Println(string(out))
-	return err
-}
-
-// NEXT: 綺麗にしよう
-func (t *TerraformClientImpl) run(command string, arg ...string) error {
-	cmd := exec.Command("terraform", []string{command, arg ...} ...)
-	cmd.Dir = t.dir
-	out, err := cmd.Output()
-	fmt.Println(string(out))
-	return err
+	return t.run("plan")
 }
 
 func (t *TerraformClientImpl) Apply() error {
-	return nil
+	err := t.init()
+	if err != nil {
+		return err
+	}
+
+	return t.run("apply")
+}
+
+func (t *TerraformClientImpl) init() error {
+	return t.run("init")
+}
+
+func (t *TerraformClientImpl) run(command string, arg ...string) error {
+	args := append([]string{command}, arg...)
+	cmd := exec.Command("terraform", args...)
+	cmd.Dir = t.dir
+	cmd.Stdout = os.Stdout
+	return cmd.Run()
 }
