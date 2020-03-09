@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/mitene/terrafire"
+	"log"
 )
 
 func main() {
@@ -10,15 +12,19 @@ func main() {
 	args := flag.Args()
 
 	fmt.Println(args)
-	//client := terrafire.NewGithubClient()
-	//err := client.GetSource("maychannel-dev", "terraform", "terrafire-test", "aws/test", "out")
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//
-	//tc := terrafire.NewTerraformClient("out")
-	//err = tc.Plan()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	if len(args) < 1 {
+		log.Fatalln("error!!!!")
+	}
+
+	runner := terrafire.NewRunner()
+
+	action := args[0]
+	switch action {
+	case "plan":
+		err := runner.Plan()
+		if err != nil {
+			log.Fatalln(err)
+		}
+	default:
+	}
 }

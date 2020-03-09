@@ -24,10 +24,10 @@ type Config struct {
 			Path     string `hcl:"path"`
 			Revision string `hcl:"revision"`
 		} `hcl:"source,block"`
-		Workspace    string            `hcl:"workspace"`
-		AllowDestroy *bool             `hcl:"allow_destroy"`
-		Vars         map[string]string `hcl:"vars"`
-		VarFiles     *[]string         `hcl:"var_files"`
+		Workspace    string             `hcl:"workspace"`
+		AllowDestroy *bool              `hcl:"allow_destroy"`
+		Vars         *map[string]string `hcl:"vars"`
+		VarFiles     *[]string          `hcl:"var_files"`
 	} `hcl:"terraform_deploy,block"`
 }
 
