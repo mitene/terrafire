@@ -10,15 +10,17 @@ type Runner interface {
 }
 
 type RunnerImpl struct {
+	github GithubClient
+	terraform TerraformClient
 }
 
-func NewRunner() Runner {
-	return &RunnerImpl{}
+func NewRunner(github GithubClient, terraform TerraformClient) Runner {
+	return &RunnerImpl{
+		github,
+		terraform,
+	}
 }
 
-// config をパースしたい
-// config をもとにソースコードをもってくる
-// その上でコマンドを実行する
 func (r *RunnerImpl) Plan() error {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -30,20 +32,17 @@ func (r *RunnerImpl) Plan() error {
 		return err
 	}
 
-	client := NewGithubClient()
-
 	for _, deploy := range cfg.TerraformDeploy {
 		tmpDir, err := ioutil.TempDir("", "")
 		if err != nil {
 			return err
 		}
-		err = client.GetSource(deploy.Source.Owner, deploy.Source.Repo, deploy.Source.Revision, deploy.Source.Path, tmpDir)
+		err = r.github.GetSource(deploy.Source.Owner, deploy.Source.Repo, deploy.Source.Revision, deploy.Source.Path, tmpDir)
 		if err != nil {
 			return err
 		}
 
-		tc := NewTerraformClient(tmpDir)
-		err = tc.Plan()
+		err = r.terraform.Plan(tmpDir)
 		if err != nil {
 			return err
 		}
