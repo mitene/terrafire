@@ -1,6 +1,7 @@
 package terrafire
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -14,6 +15,7 @@ func TestRunnerImpl_Plan(t *testing.T) {
 	}
 	var terraformArgs struct {
 		dir string
+		params *ConfigTerraformDeployParams
 	}
 	r := NewRunner(
 		&GithubClientMock{
@@ -29,6 +31,11 @@ func TestRunnerImpl_Plan(t *testing.T) {
 		&TerraformClientMock{
 			plan: func(dir string, params *ConfigTerraformDeployParams) error {
 				terraformArgs.dir = dir
+				terraformArgs.params = params
+
+				fmt.Println(*params.Vars)
+				//t.Fatal("hoge")
+
 				return nil
 			},
 		},

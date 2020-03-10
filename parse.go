@@ -1,6 +1,7 @@
 package terrafire
 
 import (
+	"github.com/zclconf/go-cty/cty"
 	"io/ioutil"
 	"path/filepath"
 
@@ -34,7 +35,7 @@ type ConfigTerraformDeploy struct {
 
 type ConfigTerraformDeployParams struct {
 	Workspace string             `hcl:"workspace"`
-	Vars      *map[string]string `hcl:"vars"`
+	Vars      *map[string]cty.Value `hcl:"vars"`
 	VarFiles  *[]string          `hcl:"var_files"`
 }
 
