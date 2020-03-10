@@ -28,7 +28,7 @@ type ConfigTerraformDeploy struct {
 		Path     string `hcl:"path"`
 		Revision string `hcl:"revision"`
 	} `hcl:"source,block"`
-	Params       *ConfigTerraformDeployParams `hcl:"params"`
+	Params       *ConfigTerraformDeployParams `hcl:"params,block"`
 	AllowDestroy *bool                        `hcl:"allow_destroy"`
 }
 

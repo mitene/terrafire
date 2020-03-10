@@ -30,7 +30,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("terraform_deploy[0].source.owner: want terrafire, got %s", v.TerraformDeploy[0].Source.Owner)
 	}
 
-	if vars := *v.TerraformDeploy[0].Vars; vars["foo_revision"] != "xxx" {
+	if vars := *v.TerraformDeploy[0].Params.Vars; vars["foo_revision"] != "xxx" {
 		t.Fatalf("terraform_deploy[0].vars[\"foo_revision\"]: want xxx, got %s", vars["foo_revision"])
 	}
 
@@ -40,7 +40,7 @@ func TestLoadConfig(t *testing.T) {
 	if v.TerraformDeploy[1].Source.Owner != "terrafire" {
 		t.Fatalf("terraform_deploy[1].source.owner: want terrafire, got %s", v.TerraformDeploy[1].Source.Owner)
 	}
-	if vars := *v.TerraformDeploy[1].Vars; vars["package_revision"] != "xxx" {
+	if vars := *v.TerraformDeploy[1].Params.Vars; vars["package_revision"] != "xxx" {
 		t.Fatalf("terraform_deploy[1].vars[\"package_revision\"]: want xxx, got %s", vars["package_revision"])
 	}
 }

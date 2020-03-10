@@ -1,20 +1,20 @@
 package terrafire
 
 type TerraformClientMock struct {
-	plan func(dir string) error
-	apply func(dir string) error
+	plan func(dir string, params *ConfigTerraformDeployParams) error
+	apply func(dir string, params *ConfigTerraformDeployParams) error
 }
 
-func (c *TerraformClientMock) Plan(dir string) error {
+func (c *TerraformClientMock) Plan(dir string, params *ConfigTerraformDeployParams) error {
 	if c.plan != nil {
-		return c.plan(dir)
+		return c.plan(dir, params)
 	}
 	return nil
 }
 
-func (c *TerraformClientMock) Apply(dir string) error {
+func (c *TerraformClientMock) Apply(dir string, params *ConfigTerraformDeployParams) error {
 	if c.apply != nil {
-		return c.apply(dir)
+		return c.apply(dir, params)
 	}
 	return nil
 }

@@ -27,7 +27,7 @@ func TestRunnerImpl_Plan(t *testing.T) {
 			},
 		},
 		&TerraformClientMock{
-			plan: func(dir string) error {
+			plan: func(dir string, params *ConfigTerraformDeployParams) error {
 				terraformArgs.dir = dir
 				return nil
 			},
@@ -79,7 +79,7 @@ func TestRunnerImpl_Apply(t *testing.T) {
 			},
 		},
 		&TerraformClientMock{
-			apply: func(dir string) error {
+			apply: func(dir string, params *ConfigTerraformDeployParams) error {
 				terraformArgs.dir = dir
 				return nil
 			},
