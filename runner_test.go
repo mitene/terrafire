@@ -25,7 +25,7 @@ func TestRunnerImpl_Plan(t *testing.T) {
 		},
 		&TerraformClientMock{},
 	)
-	err := r.Plan("sample/terraform")
+	err := r.Plan("sample")
 	if err != nil {
 		t.Fatal(err)
 	}
