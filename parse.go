@@ -16,19 +16,21 @@ type Config struct {
 			Key    string `hcl:"key"`
 		} `hcl:"backend,block"`
 	} `hcl:"terrafire,block"`
-	TerraformDeploy []struct {
-		Name   string `hcl:"name,label"`
-		Source struct {
-			Owner    string `hcl:"owner"`
-			Repo     string `hcl:"repo"`
-			Path     string `hcl:"path"`
-			Revision string `hcl:"revision"`
-		} `hcl:"source,block"`
-		Workspace    string             `hcl:"workspace"`
-		AllowDestroy *bool              `hcl:"allow_destroy"`
-		Vars         *map[string]string `hcl:"vars"`
-		VarFiles     *[]string          `hcl:"var_files"`
-	} `hcl:"terraform_deploy,block"`
+	TerraformDeploy []ConfigTerraformDeploy `hcl:"terraform_deploy,block"`
+}
+
+type ConfigTerraformDeploy struct {
+	Name   string `hcl:"name,label"`
+	Source struct {
+		Owner    string `hcl:"owner"`
+		Repo     string `hcl:"repo"`
+		Path     string `hcl:"path"`
+		Revision string `hcl:"revision"`
+	} `hcl:"source,block"`
+	Workspace    string             `hcl:"workspace"`
+	AllowDestroy *bool              `hcl:"allow_destroy"`
+	Vars         *map[string]string `hcl:"vars"`
+	VarFiles     *[]string          `hcl:"var_files"`
 }
 
 // Parse all `*.hcl` files in the given directory.
