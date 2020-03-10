@@ -1,11 +1,12 @@
 package terrafire
 
 import (
+	"io/ioutil"
+	"path/filepath"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
-	"io/ioutil"
-	"path/filepath"
 )
 
 type Config struct {
@@ -27,10 +28,14 @@ type ConfigTerraformDeploy struct {
 		Path     string `hcl:"path"`
 		Revision string `hcl:"revision"`
 	} `hcl:"source,block"`
-	Workspace    string             `hcl:"workspace"`
-	AllowDestroy *bool              `hcl:"allow_destroy"`
-	Vars         *map[string]string `hcl:"vars"`
-	VarFiles     *[]string          `hcl:"var_files"`
+	Params       *ConfigTerraformDeployParams `hcl:"params"`
+	AllowDestroy *bool                        `hcl:"allow_destroy"`
+}
+
+type ConfigTerraformDeployParams struct {
+	Workspace string             `hcl:"workspace"`
+	Vars      *map[string]string `hcl:"vars"`
+	VarFiles  *[]string          `hcl:"var_files"`
 }
 
 // Parse all `*.hcl` files in the given directory.

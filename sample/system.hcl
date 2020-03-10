@@ -6,10 +6,11 @@ terraform_deploy "system" {
     revision = "xxxx"
   }
 
-  workspace   = "dev"
-
-  vars = {
-    "package_revision"          = "xxx"
+  params {
+    workspace   = "dev"
+    vars = {
+      "package_revision" = "xxx"
+    }
   }
 }
 

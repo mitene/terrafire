@@ -27,10 +27,10 @@ func TestRunnerImpl_Plan(t *testing.T) {
 			},
 		},
 		&TerraformClientMock{
-				plan: func(dir string) error {
-					terraformArgs.dir = dir
-					return nil
-				},
+			plan: func(dir string) error {
+				terraformArgs.dir = dir
+				return nil
+			},
 		},
 	)
 	err := r.Plan("sample")
