@@ -56,6 +56,10 @@ func TestRunnerImpl_Plan(t *testing.T) {
 	if terraformArgs.dir != githubArgs.dest {
 		t.Fatalf("terraform.Plan: want %s, got %s", githubArgs.dest, terraformArgs.dir)
 	}
+	if (*terraformArgs.params.Vars)["package_revision"] != "\"xxx\"" {
+		t.Fatalf("terraform.Plan: want \"xxx\", got %s", (*terraformArgs.params.Vars)["package_revision"])
+	}
+
 }
 
 func TestRunnerImpl_Apply(t *testing.T) {

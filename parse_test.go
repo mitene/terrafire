@@ -3,6 +3,7 @@ package terrafire
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -28,6 +29,10 @@ func TestLoadConfig(t *testing.T) {
 	}
 	if v.TerraformDeploy[0].Source.Owner != "terrafire" {
 		t.Fatalf("terraform_deploy[0].source.owner: want terrafire, got %s", v.TerraformDeploy[0].Source.Owner)
+	}
+
+	if varfile := (*v.TerraformDeploy[0].Params.VarFiles)[0]; varfile != filepath.Join(cwd, "sample/app/variables.tfvars") {
+		t.Fatalf("terraformDeploy[0].Params.VarFiles[0]: want \"CWD/sample/app/variables.tfvars\", got %s", varfile)
 	}
 
 	if vars := *v.TerraformDeploy[0].Params.Vars; vars["foo_revision"] != "\"xxx\"" {

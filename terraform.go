@@ -24,21 +24,7 @@ func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployPara
 		return err
 	}
 
-	var args []string
-
-	if params != nil && params.VarFiles != nil {
-		for _, vf := range *params.VarFiles {
-			args = append(args, "-var-file="+vf)
-		}
-	}
-
-	if params != nil && params.Vars != nil {
-		for k, v := range *params.Vars {
-			args = append(args, fmt.Sprintf("-var=%s=%s", k, v))
-		}
-	}
-
-	return t.run(dir, "plan", args...)
+	return t.run(dir, "plan", t.makeArgs(params)...)
 }
 
 func (t *TerraformClientImpl) Apply(dir string, params *ConfigTerraformDeployParams) error {
@@ -47,8 +33,7 @@ func (t *TerraformClientImpl) Apply(dir string, params *ConfigTerraformDeployPar
 		return err
 	}
 
-	var args []string
-	return t.run(dir, "apply", args...)
+	return t.run(dir, "apply", t.makeArgs(params)...)
 }
 
 func (t *TerraformClientImpl) init(dir string, params *ConfigTerraformDeployParams) error {
@@ -76,4 +61,22 @@ func (t *TerraformClientImpl) run(dir string, command string, arg ...string) err
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func (*TerraformClientImpl) makeArgs(params *ConfigTerraformDeployParams) []string {
+	var args []string
+
+	if params != nil && params.VarFiles != nil {
+		for _, vf := range *params.VarFiles {
+			args = append(args, "-var-file="+vf)
+		}
+	}
+
+	if params != nil && params.Vars != nil {
+		for k, v := range *params.Vars {
+			args = append(args, fmt.Sprintf("-var=%s=%s", k, v))
+		}
+	}
+
+	return args
 }
