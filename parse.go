@@ -2,6 +2,7 @@ package terrafire
 
 import (
 	"github.com/zclconf/go-cty/cty"
+	cty_json "github.com/zclconf/go-cty/cty/json"
 	"io/ioutil"
 	"path/filepath"
 
@@ -34,9 +35,10 @@ type ConfigTerraformDeploy struct {
 }
 
 type ConfigTerraformDeployParams struct {
-	Workspace string             `hcl:"workspace"`
-	Vars      *map[string]cty.Value `hcl:"vars"`
-	VarFiles  *[]string          `hcl:"var_files"`
+	Workspace string     `hcl:"workspace"`
+	RawVars   *cty.Value `hcl:"vars"`
+	Vars      *map[string]string
+	VarFiles  *[]string `hcl:"var_files"`
 }
 
 // Parse all `*.hcl` files in the given directory.
@@ -74,5 +76,31 @@ func LoadConfig(dirPath string) (*Config, error) {
 		return nil, diags
 	}
 
+	for _, d := range config.TerraformDeploy {
+		vars, err := convertRawVars(d.Params.RawVars)
+		if err != nil {
+			return nil, err
+		}
+		d.Params.Vars = vars
+	}
+
 	return &config, nil
+}
+
+func convertRawVars(value *cty.Value) (*map[string]string, error) {
+	if value == nil {
+		return nil, nil
+	}
+
+	ret := map[string]string{}
+
+	for k, v := range value.AsValueMap() {
+		j, err := cty_json.Marshal(v, v.Type())
+		if err != nil {
+			return nil, err
+		}
+		ret[k] = string(j)
+	}
+
+	return &ret, nil
 }

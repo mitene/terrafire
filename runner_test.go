@@ -1,7 +1,6 @@
 package terrafire
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -14,7 +13,7 @@ func TestRunnerImpl_Plan(t *testing.T) {
 		dest   string
 	}
 	var terraformArgs struct {
-		dir string
+		dir    string
 		params *ConfigTerraformDeployParams
 	}
 	r := NewRunner(
@@ -32,10 +31,6 @@ func TestRunnerImpl_Plan(t *testing.T) {
 			plan: func(dir string, params *ConfigTerraformDeployParams) error {
 				terraformArgs.dir = dir
 				terraformArgs.params = params
-
-				fmt.Println(*params.Vars)
-				//t.Fatal("hoge")
-
 				return nil
 			},
 		},

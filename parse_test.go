@@ -30,8 +30,14 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatalf("terraform_deploy[0].source.owner: want terrafire, got %s", v.TerraformDeploy[0].Source.Owner)
 	}
 
-	if vars := *v.TerraformDeploy[0].Params.Vars; vars["foo_revision"].AsString() != "xxx" {
-		t.Fatalf("terraform_deploy[0].vars[\"foo_revision\"]: want xxx, got %s", vars["foo_revision"])
+	if vars := *v.TerraformDeploy[0].Params.Vars; vars["foo_revision"] != "\"xxx\"" {
+		t.Fatalf("terraform_deploy[0].vars[\"foo_revision\"]: want \"xxx\", got %s", vars["foo_revision"])
+	}
+	if vars := *v.TerraformDeploy[0].Params.Vars; vars["ami_list"] != "[\"ami-abc123\",\"ami-def456\"]" {
+		t.Fatalf("terraform_deploy[0].vars[\"ami_list\"]: want [\"ami-abc123\",\"ami-def456\"], got %s", vars["ami_list"])
+	}
+	if vars := *v.TerraformDeploy[0].Params.Vars; vars["region_map"] != "{\"us-east-1\":\"ami-abc123\",\"us-east-2\":\"ami-def456\"}" {
+		t.Fatalf("terraform_deploy[0].vars[\"region_map\"]: want {\"us-east-1\":\"ami-abc123\",\"us-east-2\":\"ami-def456\"}, got %s", vars["region_map"])
 	}
 
 	if v.TerraformDeploy[1].Name != "system" {
@@ -40,7 +46,7 @@ func TestLoadConfig(t *testing.T) {
 	if v.TerraformDeploy[1].Source.Owner != "terrafire" {
 		t.Fatalf("terraform_deploy[1].source.owner: want terrafire, got %s", v.TerraformDeploy[1].Source.Owner)
 	}
-	if vars := *v.TerraformDeploy[1].Params.Vars; vars["package_revision"].AsString() != "xxx" {
-		t.Fatalf("terraform_deploy[1].vars[\"package_revision\"]: want xxx, got %s", vars["package_revision"])
+	if vars := *v.TerraformDeploy[1].Params.Vars; vars["package_revision"] != "\"xxx\"" {
+		t.Fatalf("terraform_deploy[1].vars[\"package_revision\"]: want \"xxx\", got %s", vars["package_revision"])
 	}
 }

@@ -1,7 +1,7 @@
 package terrafire
 
 type TerraformClientMock struct {
-	plan func(dir string, params *ConfigTerraformDeployParams) error
+	plan  func(dir string, params *ConfigTerraformDeployParams) error
 	apply func(dir string, params *ConfigTerraformDeployParams) error
 }
 
