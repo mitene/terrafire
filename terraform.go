@@ -1,6 +1,7 @@
 package terrafire
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 )
@@ -32,8 +33,8 @@ func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployPara
 	}
 
 	if params != nil && params.Vars != nil {
-		for _, v := range *params.Vars {
-			args = append(args, "-var="+v)
+		for k, v := range *params.Vars {
+			args = append(args, fmt.Sprintf("-var=%s=%s", k, v))
 		}
 	}
 
@@ -60,7 +61,7 @@ func (t *TerraformClientImpl) init(dir string, params *ConfigTerraformDeployPara
 	}
 	err = t.run(dir, "workspace", "select", params.Workspace)
 	if err != nil {
-		err = t.run(dir, "workspace", "init")
+		err = t.run(dir, "workspace", "new", params.Workspace)
 		if err != nil {
 			return err
 		}
@@ -73,5 +74,6 @@ func (t *TerraformClientImpl) run(dir string, command string, arg ...string) err
 	cmd := exec.Command("terraform", args...)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }

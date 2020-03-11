@@ -1,10 +1,11 @@
 package terrafire
 
 import (
-	"github.com/zclconf/go-cty/cty"
-	cty_json "github.com/zclconf/go-cty/cty/json"
 	"io/ioutil"
 	"path/filepath"
+
+	"github.com/zclconf/go-cty/cty"
+	cty_json "github.com/zclconf/go-cty/cty/json"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
@@ -82,6 +83,11 @@ func LoadConfig(dirPath string) (*Config, error) {
 			return nil, err
 		}
 		d.Params.Vars = vars
+
+		d.Params.VarFiles, err = resolveVarFiles(d.Params.VarFiles, dirPath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &config, nil
@@ -103,4 +109,23 @@ func convertRawVars(value *cty.Value) (*map[string]string, error) {
 	}
 
 	return &ret, nil
+}
+
+func resolveVarFiles(varFiles *[]string, dirPath string) (*[]string, error) {
+	if varFiles == nil {
+		return nil, nil
+	}
+
+	abs, err := filepath.Abs(dirPath)
+	if err != nil {
+		return nil, err
+	}
+
+	files := make([]string, len(*varFiles))
+	for i, f := range *varFiles {
+		s := filepath.Join(abs, f)
+		files[i] = filepath.Clean(s)
+	}
+
+	return &files, nil
 }
