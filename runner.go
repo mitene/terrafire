@@ -6,7 +6,7 @@ import (
 )
 
 type Runner interface {
-	Plan(dir string) error
+	Plan(dir string, reportType ReportType) error
 	Apply(dir string) error
 }
 
@@ -21,6 +21,14 @@ type PlanResult struct {
 	Error error
 }
 
+type PlanResults map[string]PlanResult
+
+type ReportType int
+
+const (
+	ReportTypeGithub = iota
+)
+
 func NewRunner(github GithubClient, terraform TerraformClient) Runner {
 	return &RunnerImpl{
 		github,
@@ -28,19 +36,26 @@ func NewRunner(github GithubClient, terraform TerraformClient) Runner {
 	}
 }
 
-func (r *RunnerImpl) Plan(dir string) error {
+func (r *RunnerImpl) Plan(dir string, reportTo ReportType) error {
 	cfg, err := LoadConfig(dir)
 	if err != nil {
 		return err
 	}
 
-	results := map[string]PlanResult{}
+	results := PlanResults{}
 	for _, deploy := range cfg.TerraformDeploy {
 		result, err := r.planSingle(deploy)
 		results[deploy.Name] = PlanResult{
 			Name:  deploy.Name,
 			Body:  result,
 			Error: err,
+		}
+	}
+
+	if reportTo == ReportTypeGithub {
+		err = NewReporterGithub(r.github).Report(results)
+		if err != nil {
+			return err
 		}
 	}
 

@@ -31,7 +31,7 @@ func main() {
 	action := args[0]
 	switch action {
 	case "plan":
-		err := runner.Plan(cwd)
+		err := runner.Plan(cwd, terrafire.ReportTypeGithub)
 		if err != nil {
 			log.Fatalln(err)
 		}

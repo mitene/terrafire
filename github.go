@@ -16,6 +16,7 @@ import (
 
 type GithubClient interface {
 	GetSource(owner string, repo string, ref string, subDir string, dest string) error
+	CreateComment(owner string, repo string, issue int, body string) error
 }
 
 type GithubClientImpl struct {
@@ -59,6 +60,13 @@ func (c *GithubClientImpl) GetSource(owner string, repo string, ref string, subD
 	}
 
 	return nil
+}
+
+func (c *GithubClientImpl) CreateComment(owner string, repo string, issue int, body string) error {
+	_, _, err := c.client.Issues.CreateComment(context.Background(), owner, repo, issue, &github.IssueComment{
+		Body: &body,
+	})
+	return err
 }
 
 func (*GithubClientImpl) extract(src io.Reader, subDir string, dest string) error {

@@ -1,7 +1,13 @@
 package terrafire
 
+import (
+	"fmt"
+	"os"
+	"strconv"
+)
+
 type Reporter interface {
-	Report(PlanResult) error
+	Report(PlanResults) error
 }
 
 type ReporterGithub struct {
@@ -14,7 +20,32 @@ func NewReporterGithub(github GithubClient) Reporter {
 	}
 }
 
-func (*ReporterGithub) Report(planResult PlanResult) error {
+func (r *ReporterGithub) Report(planResults PlanResults) error {
+	owner, ok := os.LookupEnv("TERRAFIRE_REPORT_GITHUB_OWNER")
+	if !ok {
+		return fmt.Errorf("TERRAFIRE_REPORT_GITHUB_OWNER is not set")
+	}
+
+	repo, ok := os.LookupEnv("TERRAFIRE_REPORT_GITHUB_REPO")
+	if !ok {
+		return fmt.Errorf("TERRAFIRE_REPORT_GITHUB_REPO is not set")
+	}
+
+	issue, ok := os.LookupEnv("TERRAFIRE_REPORT_GITHUB_ISSUE")
+	if !ok {
+		return fmt.Errorf("TERRAFIRE_REPORT_GITHUB_ISSUE is not set")
+	}
+	issueNumber, err := strconv.Atoi(issue)
+	if err != nil {
+		return err
+	}
+
+	for _, result := range planResults {
+		err = r.github.CreateComment(owner, repo, issueNumber, result.Body)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
