@@ -15,6 +15,12 @@ type RunnerImpl struct {
 	terraform TerraformClient
 }
 
+type PlanResult struct {
+	Name  string
+	Body  string
+	Error error
+}
+
 func NewRunner(github GithubClient, terraform TerraformClient) Runner {
 	return &RunnerImpl{
 		github,
@@ -28,34 +34,37 @@ func (r *RunnerImpl) Plan(dir string) error {
 		return err
 	}
 
+	results := map[string]PlanResult{}
 	for _, deploy := range cfg.TerraformDeploy {
-		err := r.planSingle(deploy)
-		if err != nil {
-			return err
+		result, err := r.planSingle(deploy)
+		results[deploy.Name] = PlanResult{
+			Name:  deploy.Name,
+			Body:  result,
+			Error: err,
 		}
 	}
 
 	return nil
 }
 
-func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) error {
+func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 	tmpDir, err := ioutil.TempDir("", "")
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer os.RemoveAll(tmpDir)
 
 	err = r.github.GetSource(deploy.Source.Owner, deploy.Source.Repo, deploy.Source.Revision, deploy.Source.Path, tmpDir)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	_, err = r.terraform.Plan(tmpDir, deploy.Params)
+	result, err := r.terraform.Plan(tmpDir, deploy.Params)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return result, nil
 }
 
 func (r *RunnerImpl) Apply(dir string) error {
