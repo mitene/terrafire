@@ -2,12 +2,13 @@ package terrafire
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 )
 
 type TerraformClient interface {
-	Plan(dir string, params *ConfigTerraformDeployParams) error
+	Plan(dir string, params *ConfigTerraformDeployParams) (string, error)
 	Apply(dir string, params *ConfigTerraformDeployParams) error
 }
 
@@ -18,13 +19,31 @@ func NewTerraformClient() TerraformClient {
 	return &TerraformClientImpl{}
 }
 
-func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployParams) error {
+func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployParams) (string, error) {
 	err := t.init(dir, params)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return t.run(dir, "plan", t.makeArgs(params)...)
+	planResult, err := ioutil.TempFile("", "")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(planResult.Name())
+
+	err = t.run(dir, "plan", append(t.makeArgs(params), "--out="+planResult.Name())...)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("terraform", "show", planResult.Name())
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
 }
 
 func (t *TerraformClientImpl) Apply(dir string, params *ConfigTerraformDeployParams) error {

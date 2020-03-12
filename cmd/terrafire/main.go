@@ -35,6 +35,11 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
+	case "test":
+		err := terrafire.NewTerraformClient().Plan(cwd)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	default:
 	}
 }
