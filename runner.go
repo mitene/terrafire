@@ -50,7 +50,7 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) error {
 		return err
 	}
 
-	err = r.terraform.Plan(tmpDir, deploy.Params)
+	_, err = r.terraform.Plan(tmpDir, deploy.Params)
 	if err != nil {
 		return err
 	}

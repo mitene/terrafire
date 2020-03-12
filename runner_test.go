@@ -28,10 +28,10 @@ func TestRunnerImpl_Plan(t *testing.T) {
 			},
 		},
 		&TerraformClientMock{
-			plan: func(dir string, params *ConfigTerraformDeployParams) error {
+			plan: func(dir string, params *ConfigTerraformDeployParams) (string, error) {
 				terraformArgs.dir = dir
 				terraformArgs.params = params
-				return nil
+				return "", nil
 			},
 		},
 	)

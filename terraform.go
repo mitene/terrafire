@@ -36,7 +36,7 @@ func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployPara
 		return "", err
 	}
 
-	cmd := exec.Command("terraform", "show", planResult.Name())
+	cmd := exec.Command("terraform", "show", "-no-color", planResult.Name())
 	cmd.Stderr = os.Stderr
 	out, err := cmd.Output()
 	if err != nil {
