@@ -1,8 +1,11 @@
 .PHONY: build
 build:
-	go build -o bin/terrafire ./cmd/terrafire 
+	go build -o bin/terrafire ./cmd/terrafire
 
 .PHONY: test
+test: export TERRAFIRE_REPORT_GITHUB_OWNER = mitene
+test: export TERRAFIRE_REPORT_GITHUB_REPO  = terrafire
+test: export TERRAFIRE_REPORT_GITHUB_ISSUE = 1
 test:
 	go test .
 
