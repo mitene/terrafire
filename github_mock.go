@@ -1,7 +1,7 @@
 package terrafire
 
 type GithubClientMock struct {
-	getSource func(owner string, repo string, ref string, subDir string, dest string) error
+	getSource     func(owner string, repo string, ref string, subDir string, dest string) error
 	createComment func(owner string, repo string, issue int, body string) error
 }
 

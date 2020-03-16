@@ -40,12 +40,20 @@ func (r *ReporterGithub) Report(planResults PlanResults) error {
 		return err
 	}
 
-	for _, result := range planResults {
-		err = r.github.CreateComment(owner, repo, issueNumber, result.Body)
-		if err != nil {
-			return err
-		}
+	err = r.github.CreateComment(owner, repo, issueNumber, r.formatBody(planResults))
+	if err != nil {
+		return err
 	}
 
 	return nil
+}
+
+func (r *ReporterGithub) formatBody(results PlanResults) string {
+	body := ""
+
+	for _, result := range results {
+		body = body + fmt.Sprintf("```\n%s\n```", result.Body)
+	}
+
+	return body
 }
