@@ -35,7 +35,7 @@ func TestRunnerImpl_Plan(t *testing.T) {
 			},
 		},
 	)
-	err := r.Plan("sample")
+	err := r.Plan("sample", ReportTypeGithub)
 	if err != nil {
 		t.Fatal(err)
 	}
