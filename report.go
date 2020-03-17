@@ -52,7 +52,12 @@ func (r *ReporterGithub) formatBody(results PlanResults) string {
 	body := ""
 
 	for _, result := range results {
-		body = body + fmt.Sprintf("```\n%s\n```", result.Body)
+		body += fmt.Sprintf("### %s\n\n", result.Name)
+		if result.Error != nil {
+			body += fmt.Sprintf("Plan failed with error:\n\n```\n%s\n```", result.Error)
+		} else {
+			body += fmt.Sprintf("Plan result:\n\n```\n%s\n```", result.Body)
+		}
 	}
 
 	return body
