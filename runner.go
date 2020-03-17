@@ -1,8 +1,12 @@
 package terrafire
 
 import (
+	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
+
+	"google.golang.org/appengine/log"
 )
 
 type Runner interface {
@@ -43,12 +47,16 @@ func (r *RunnerImpl) Plan(dir string, reportTo ReportType) error {
 	}
 
 	results := PlanResults{}
+	failed := 0
 	for _, deploy := range cfg.TerraformDeploy {
 		result, err := r.planSingle(deploy)
 		results[deploy.Name] = PlanResult{
 			Name:  deploy.Name,
 			Body:  result,
 			Error: err,
+		}
+		if err != nil {
+			failed++
 		}
 	}
 
@@ -59,6 +67,9 @@ func (r *RunnerImpl) Plan(dir string, reportTo ReportType) error {
 		}
 	}
 
+	if failed > 0 {
+		return fmt.Errorf("plan failed: %d of %d", failed, len(cfg.TerraformDeploy))
+	}
 	return nil
 }
 
@@ -88,13 +99,18 @@ func (r *RunnerImpl) Apply(dir string) error {
 		return err
 	}
 
+	failed := 0
 	for _, deploy := range cfg.TerraformDeploy {
 		err := r.applySingle(deploy)
 		if err != nil {
-			return err
+			log.Errorf(context.Background(), err.Error())
+			failed++
 		}
 	}
 
+	if failed > 0 {
+		return fmt.Errorf("apply failed: %d of %d", failed, len(cfg.TerraformDeploy))
+	}
 	return nil
 }
 
