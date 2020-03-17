@@ -30,7 +30,8 @@ type PlanResults map[string]PlanResult
 type ReportType int
 
 const (
-	ReportTypeGithub = iota
+	ReportTypeNone = iota
+	ReportTypeGithub
 )
 
 func NewRunner(github GithubClient, terraform TerraformClient) Runner {

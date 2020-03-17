@@ -31,7 +31,16 @@ func main() {
 	action := args[0]
 	switch action {
 	case "plan":
-		err := runner.Plan(cwd, terrafire.ReportTypeGithub)
+		var reportType terrafire.ReportType
+		switch t := os.Getenv("TERRAFIRE_REPORT"); t {
+		case "github":
+			reportType = terrafire.ReportTypeGithub
+		case "":
+			reportType = terrafire.ReportTypeNone
+		default:
+			log.Fatalf("invalid report type: %s", t)
+		}
+		err := runner.Plan(cwd, reportType)
 		if err != nil {
 			log.Fatalln(err)
 		}
