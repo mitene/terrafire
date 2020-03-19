@@ -31,7 +31,7 @@ func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployPara
 	}
 	defer os.Remove(planResult.Name())
 
-	err = t.run(dir, "plan", append(t.makeArgs(params), "--out="+planResult.Name())...)
+	err = t.run(dir, "plan", append(t.makeArgs(params), "-no-color", "--out="+planResult.Name())...)
 	if err != nil {
 		return "", err
 	}
@@ -52,20 +52,20 @@ func (t *TerraformClientImpl) Apply(dir string, params *ConfigTerraformDeployPar
 		return err
 	}
 
-	return t.run(dir, "apply", t.makeArgs(params)...)
+	return t.run(dir, "apply", append(t.makeArgs(params), "-no-color")...)
 }
 
 func (t *TerraformClientImpl) init(dir string, params *ConfigTerraformDeployParams) error {
-	err := t.run(dir, "init")
+	err := t.run(dir, "init", "-no-color")
 	if err != nil {
 		return err
 	}
 	if params == nil || params.Workspace == "" {
 		return nil
 	}
-	err = t.run(dir, "workspace", "select", params.Workspace)
+	err = t.run(dir, "workspace", "select", "-no-color", params.Workspace)
 	if err != nil {
-		err = t.run(dir, "workspace", "new", params.Workspace)
+		err = t.run(dir, "workspace", "new", "-no-color", params.Workspace)
 		if err != nil {
 			return err
 		}
