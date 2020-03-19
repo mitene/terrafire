@@ -57,6 +57,7 @@ func (r *RunnerImpl) Plan(dir string, reportTo ReportType) error {
 			Error: err,
 		}
 		if err != nil {
+			log.Errorf(context.Background(), err.Error())
 			failed++
 		}
 	}
