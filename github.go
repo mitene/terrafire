@@ -24,7 +24,7 @@ type GithubClientImpl struct {
 }
 
 func NewGithubClient() GithubClient {
-	token, ok := os.LookupEnv("GITHUB_ACCESS_TOKEN")
+	token, ok := os.LookupEnv("GITHUB_TOKEN")
 	var tc *http.Client
 	if ok {
 		ctx := context.Background()
