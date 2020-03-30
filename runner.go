@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 )
 
 type Runner interface {
@@ -83,6 +84,14 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 	err = r.github.GetSource(deploy.Source.Owner, deploy.Source.Repo, deploy.Source.Revision, deploy.Source.Path, tmpDir)
 	if err != nil {
 		return "", err
+	}
+
+	if deploy.Params != nil && deploy.Params.VarFiles != nil {
+		for i, vf := range *deploy.Params.VarFiles {
+			if strings.HasSuffix(vf, ".enc") {
+				(*deploy.Params.VarFiles)[i] = DecryptFile(vf)
+			}
+		}
 	}
 
 	result, err := r.terraform.Plan(tmpDir, deploy.Params)
