@@ -89,27 +89,36 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 	// TODO:
 	// deploy.Params の中身を変更するので、そのまえに params のコピーをつくって変更する
 	// そして、そのコピー params を terraform.Plan へ渡すこと
-	if deploy.Params != nil && deploy.Params.VarFiles != nil {
-		for i, vf := range *deploy.Params.VarFiles {
+	params := *deploy.Params
+	params.VarFiles = &(*deploy.Params.VarFiles)
+	var tempFiles []string
+	defer func() {
+		for _, file := range tempFiles {
+			os.Remove(file)
+		}
+	}()
+
+	if params.VarFiles != nil {
+		for i, vf := range *params.VarFiles {
 
 			if strings.HasSuffix(vf, ".enc") {
 				tmpFile, err := ioutil.TempFile("", "")
 				if err != nil {
 					return "", err
 				}
+				tempFiles = append(tempFiles, tmpFile.Name())
 
-				err := DecryptFile(vf, tmpFile.Name())
+				err = DecryptFile(vf, tmpFile.Name())
 				if err != nil {
 					return "", err
 				}
-				defer os.Remove(tmpFile.Name())
 
-				(*deploy.Params.VarFiles)[i] = tmpFile.Name()
+				(*params.VarFiles)[i] = tmpFile.Name()
 			}
 		}
 	}
 
-	result, err := r.terraform.Plan(tmpDir, deploy.Params)
+	result, err := r.terraform.Plan(tmpDir, &params)
 	if err != nil {
 		return "", err
 	}
