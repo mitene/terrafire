@@ -21,5 +21,5 @@ func (s *SopsClientImpl) DecryptFile(input string, output io.Writer) error {
 	cmd := exec.Command("sops", "-d", input)
 	cmd.Stdout = output
 	cmd.Stderr = os.Stderr
- 	return cmd.Run()
+	return cmd.Run()
 }

@@ -1,6 +1,9 @@
 package terrafire
 
 import (
+	"fmt"
+	"io"
+	"strings"
 	"testing"
 )
 
@@ -16,6 +19,7 @@ func TestRunnerImpl_Plan(t *testing.T) {
 		dir    string
 		params *ConfigTerraformDeployParams
 	}
+	var decryptFileInputs []string
 	r := NewRunner(
 		&GithubClientMock{
 			getSource: func(owner string, repo string, ref string, subDir string, dest string) error {
@@ -32,6 +36,12 @@ func TestRunnerImpl_Plan(t *testing.T) {
 				terraformArgs.dir = dir
 				terraformArgs.params = params
 				return "", nil
+			},
+		},
+		&SopsClientMock{
+			decryptFile: func(input string, output io.Writer) error {
+				decryptFileInputs = append(decryptFileInputs, input)
+				return nil
 			},
 		},
 	)
@@ -60,6 +70,19 @@ func TestRunnerImpl_Plan(t *testing.T) {
 		t.Fatalf("terraform.Plan: want \"xxx\", got %s", (*terraformArgs.params.Vars)["package_revision"])
 	}
 
+	// TODO .enc ファイルの展開先のテンポラリファイル名が .enc が外されたファイル名であることをテストすること
+	//if (*terraformArgs.params.VarFiles)["package_revision"] != "\"xxx\"" {
+	//	t.Fatalf("terraform.Plan: want \"xxx\", got %s", (*terraformArgs.params.Vars)["package_revision"])
+	//}
+	fmt.Println(*terraformArgs.params.VarFiles)
+	t.Fatal("hoge")
+
+	if len(decryptFileInputs) != 1 {
+		t.Fatalf("sops.DecryptFile: called count want 1, got %d", len(decryptFileInputs))
+	}
+	if !strings.HasSuffix(decryptFileInputs[0], "sample/app/secrets.tfvars.enc") {
+		t.Fatalf("sops.DecryptFile: want \"sample/app/secrets.tfvars.enc\", got %s", decryptFileInputs[0])
+	}
 }
 
 func TestRunnerImpl_Apply(t *testing.T) {
@@ -90,6 +113,7 @@ func TestRunnerImpl_Apply(t *testing.T) {
 				return nil
 			},
 		},
+		&SopsClientMock{},
 	)
 	err := r.Apply("sample")
 	if err != nil {

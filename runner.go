@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,6 +17,7 @@ type Runner interface {
 type RunnerImpl struct {
 	github    GithubClient
 	terraform TerraformClient
+	sops      SopsClient
 }
 
 type PlanResult struct {
@@ -33,10 +35,11 @@ const (
 	ReportTypeGithub
 )
 
-func NewRunner(github GithubClient, terraform TerraformClient) Runner {
+func NewRunner(github GithubClient, terraform TerraformClient, sops SopsClient) Runner {
 	return &RunnerImpl{
 		github,
 		terraform,
+		sops,
 	}
 }
 
@@ -104,14 +107,14 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 
 		for i, vf := range *params.VarFiles {
 			if strings.HasSuffix(vf, ".enc") {
-				tmpFile, err := ioutil.TempFile("", "")
+				basename := strings.TrimSuffix(filepath.Base(vf), ".enc")
+				tmpFile, err := ioutil.TempFile("", "*-"+basename)
 				if err != nil {
 					return "", err
 				}
 				tempFiles = append(tempFiles, tmpFile.Name())
 
-				sops := NewSopsClient()
-				err = sops.DecryptFile(vf, tmpFile)
+				err = r.sops.DecryptFile(vf, tmpFile)
 				if err != nil {
 					return "", err
 				}

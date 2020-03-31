@@ -21,6 +21,7 @@ func main() {
 	runner := terrafire.NewRunner(
 		terrafire.NewGithubClient(),
 		terrafire.NewTerraformClient(),
+		terrafire.NewSopsClient(),
 	)
 
 	cwd, err := os.Getwd()
