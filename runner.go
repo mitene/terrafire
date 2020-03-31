@@ -86,21 +86,23 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 		return "", err
 	}
 
-	// TODO:
-	// deploy.Params の中身を変更するので、そのまえに params のコピーをつくって変更する
-	// そして、そのコピー params を terraform.Plan へ渡すこと
-	params := *deploy.Params
-	params.VarFiles = &(*deploy.Params.VarFiles)
-	var tempFiles []string
-	defer func() {
-		for _, file := range tempFiles {
-			os.Remove(file)
-		}
-	}()
+	var params *ConfigTerraformDeployParams
+	if deploy.Params != nil {
+		// deploy.Params の中身を変更するので、そのまえに params の shallow copy を作る
+		params = &(*deploy.Params)
+	}
 
-	if params.VarFiles != nil {
+	if params != nil && params.VarFiles != nil {
+		params.VarFiles = &(*params.VarFiles)
+
+		var tempFiles []string
+		defer func() {
+			for _, file := range tempFiles {
+				os.Remove(file)
+			}
+		}()
+
 		for i, vf := range *params.VarFiles {
-
 			if strings.HasSuffix(vf, ".enc") {
 				tmpFile, err := ioutil.TempFile("", "")
 				if err != nil {
@@ -108,7 +110,13 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 				}
 				tempFiles = append(tempFiles, tmpFile.Name())
 
-				err = DecryptFile(vf, tmpFile.Name())
+				sops := NewSopsClient()
+				err = sops.DecryptFile(vf, tmpFile)
+				if err != nil {
+					return "", err
+				}
+
+				err = tmpFile.Close()
 				if err != nil {
 					return "", err
 				}
@@ -118,7 +126,7 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 		}
 	}
 
-	result, err := r.terraform.Plan(tmpDir, &params)
+	result, err := r.terraform.Plan(tmpDir, params)
 	if err != nil {
 		return "", err
 	}

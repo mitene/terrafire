@@ -18,12 +18,8 @@ func NewSopsClient() SopsClient {
 }
 
 func (s *SopsClientImpl) DecryptFile(input string, output io.Writer) error {
-
 	cmd := exec.Command("sops", "-d", input)
-
 	cmd.Stdout = output
 	cmd.Stderr = os.Stderr
-	cmd.Run()
-
-	return nil
+ 	return cmd.Run()
 }
