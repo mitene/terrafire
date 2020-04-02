@@ -10,6 +10,7 @@ import (
 )
 
 func main() {
+	autoApprove := flag.Bool("auto-approve", false, "Skip interactive approval of plan before applying.")
 	flag.Parse()
 	args := flag.Args()
 
@@ -41,6 +42,11 @@ func main() {
 			log.Fatalf("invalid report type: %s", t)
 		}
 		err := runner.Plan(cwd, reportType)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	case "apply":
+		err := runner.Apply(cwd, *autoApprove)
 		if err != nil {
 			log.Fatalln(err)
 		}

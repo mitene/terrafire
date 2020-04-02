@@ -85,13 +85,13 @@ func TestRunnerImpl_Apply(t *testing.T) {
 			},
 		},
 		&TerraformClientMock{
-			apply: func(dir string, params *ConfigTerraformDeployParams) error {
+			apply: func(dir string, params *ConfigTerraformDeployParams, autoApprove bool) error {
 				terraformArgs.dir = dir
 				return nil
 			},
 		},
 	)
-	err := r.Apply("sample")
+	err := r.Apply("sample", false)
 	if err != nil {
 		t.Fatal(err)
 	}

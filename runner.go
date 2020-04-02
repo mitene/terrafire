@@ -9,7 +9,7 @@ import (
 
 type Runner interface {
 	Plan(dir string, reportType ReportType) error
-	Apply(dir string) error
+	Apply(dir string, autoApprove bool) error
 }
 
 type RunnerImpl struct {
@@ -93,7 +93,7 @@ func (r *RunnerImpl) planSingle(deploy ConfigTerraformDeploy) (string, error) {
 	return result, nil
 }
 
-func (r *RunnerImpl) Apply(dir string) error {
+func (r *RunnerImpl) Apply(dir string, autoApprove bool) error {
 	cfg, err := LoadConfig(dir)
 	if err != nil {
 		return err
@@ -101,7 +101,7 @@ func (r *RunnerImpl) Apply(dir string) error {
 
 	failed := 0
 	for _, deploy := range cfg.TerraformDeploy {
-		err := r.applySingle(deploy)
+		err := r.applySingle(deploy, autoApprove)
 		if err != nil {
 			log.Print(err.Error())
 			failed++
@@ -114,7 +114,7 @@ func (r *RunnerImpl) Apply(dir string) error {
 	return nil
 }
 
-func (r *RunnerImpl) applySingle(deploy ConfigTerraformDeploy) error {
+func (r *RunnerImpl) applySingle(deploy ConfigTerraformDeploy, autoApprove bool) error {
 	tmpDir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func (r *RunnerImpl) applySingle(deploy ConfigTerraformDeploy) error {
 		return err
 	}
 
-	err = r.terraform.Apply(tmpDir, deploy.Params)
+	err = r.terraform.Apply(tmpDir, deploy.Params, autoApprove)
 	if err != nil {
 		return err
 	}

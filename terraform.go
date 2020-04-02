@@ -9,7 +9,7 @@ import (
 
 type TerraformClient interface {
 	Plan(dir string, params *ConfigTerraformDeployParams) (string, error)
-	Apply(dir string, params *ConfigTerraformDeployParams) error
+	Apply(dir string, params *ConfigTerraformDeployParams, autoApprove bool) error
 }
 
 type TerraformClientImpl struct {
@@ -47,13 +47,18 @@ func (t *TerraformClientImpl) Plan(dir string, params *ConfigTerraformDeployPara
 	return string(out), nil
 }
 
-func (t *TerraformClientImpl) Apply(dir string, params *ConfigTerraformDeployParams) error {
+func (t *TerraformClientImpl) Apply(dir string, params *ConfigTerraformDeployParams, autoApprove bool) error {
 	err := t.init(dir, params)
 	if err != nil {
 		return err
 	}
 
-	return t.run(dir, "apply", append(t.makeArgs(params), "-no-color")...)
+	args := t.makeArgs(params)
+	args = append(args, "-no-color")
+	if autoApprove {
+		args = append(args, "-auto-approve")
+	}
+	return t.run(dir, "apply", args...)
 }
 
 func (t *TerraformClientImpl) init(dir string, params *ConfigTerraformDeployParams) error {
