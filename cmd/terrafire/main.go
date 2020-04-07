@@ -10,14 +10,14 @@ import (
 )
 
 func main() {
-	autoApprove := flag.Bool("auto-approve", false, "Skip interactive approval of plan before applying.")
-	flag.Parse()
-	args := flag.Args()
+	applyCmd := flag.NewFlagSet("apply", flag.ExitOnError)
+	autoApprove := applyCmd.Bool("auto-approve", false, "Skip interactive approval of plan before applying.")
 
-	fmt.Println(args)
-	if len(args) < 1 {
+	if len(os.Args) < 2 {
 		log.Fatalln("error!!!!")
 	}
+
+	fmt.Println(os.Args[1])
 
 	runner := terrafire.NewRunner(
 		terrafire.NewGithubClient(),
@@ -29,8 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	action := args[0]
-	switch action {
+	switch os.Args[1] {
 	case "plan":
 		var reportType terrafire.ReportType
 		switch t := os.Getenv("TERRAFIRE_REPORT"); t {
@@ -46,6 +45,7 @@ func main() {
 			log.Fatalln(err)
 		}
 	case "apply":
+		applyCmd.Parse(os.Args[2:])
 		err := runner.Apply(cwd, *autoApprove)
 		if err != nil {
 			log.Fatalln(err)
