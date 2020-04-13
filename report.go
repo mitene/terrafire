@@ -58,6 +58,7 @@ func (r *ReporterGithub) formatBody(results PlanResults) string {
 		} else {
 			body += fmt.Sprintf("Plan result:\n\n```\n%s\n```", result.Body)
 		}
+		body += "\n\n"
 	}
 
 	return body
