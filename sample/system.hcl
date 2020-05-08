@@ -1,16 +1,14 @@
-terraform_deploy "system" {
-  source {
-    owner    = "terrafire"
-    repo     = "terraform"
-    path     = "system/"
-    revision = "xxxx"
+workspace "system" {
+  source "github" {
+    owner = "terrafire"
+    repo  = "terraform"
+    path  = "system/"
+    ref   = "xxxx"
   }
 
-  params {
-    workspace   = "dev"
-    vars = {
-      "package_revision" = "xxx"
-    }
+  workspace   = "dev"
+  vars = {
+    "package_revision" = "xxx"
   }
 }
 

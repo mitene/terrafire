@@ -1,19 +1,15 @@
+ALL := ./cmd/terrafire ./core ./database ./runner ./server ./utils
+
 .PHONY: build
 build:
+	(cd ui && npm run-script build)
+	rice embed-go -i ./server
 	go build -o bin/terrafire ./cmd/terrafire
 
 .PHONY: test
-test: export TERRAFIRE_REPORT_GITHUB_OWNER = mitene
-test: export TERRAFIRE_REPORT_GITHUB_REPO  = terrafire
-test: export TERRAFIRE_REPORT_GITHUB_ISSUE = 1
 test:
-	go test .
-
-.PHONY: run
-run:
-	go run ./cmd/terrafire
+	go test $(ALL)
 
 .PHONY: fmt
 fmt:
-	go fmt ./cmd/terrafire
-	go fmt .
+	go fmt $(ALL)

@@ -1,55 +1,51 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"github.com/mitene/terrafire/core"
+	"github.com/mitene/terrafire/database"
+	"github.com/mitene/terrafire/runner"
+	"github.com/mitene/terrafire/server"
+	"github.com/mitene/terrafire/utils"
 	"log"
-	"os"
-
-	"github.com/mitene/terrafire"
 )
 
 func main() {
-	applyCmd := flag.NewFlagSet("apply", flag.ExitOnError)
-	autoApprove := applyCmd.Bool("auto-approve", false, "Skip interactive approval of plan before applying.")
-
-	if len(os.Args) < 2 {
-		log.Fatalln("error!!!!")
-	}
-
-	fmt.Println(os.Args[1])
-
-	runner := terrafire.NewRunner(
-		terrafire.NewGithubClient(),
-		terrafire.NewTerraformClient(),
-	)
-
-	cwd, err := os.Getwd()
+	config, err := core.GetConfig()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	switch os.Args[1] {
-	case "plan":
-		var reportType terrafire.ReportType
-		switch t := os.Getenv("TERRAFIRE_REPORT"); t {
-		case "github":
-			reportType = terrafire.ReportTypeGithub
-		case "":
-			reportType = terrafire.ReportTypeNone
-		default:
-			log.Fatalf("invalid report type: %s", t)
-		}
-		err := runner.Plan(cwd, reportType)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	case "apply":
-		applyCmd.Parse(os.Args[2:])
-		err := runner.Apply(cwd, *autoApprove)
-		if err != nil {
-			log.Fatalln(err)
-		}
-	default:
+	tf := utils.NewTerraform()
+
+	git := utils.NewGit()
+	err = git.Init(config.Repos)
+	defer git.Clean()
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	db, err := database.NewDB(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	runner_ := runner.NewLocalRunner(config.NumWorkers, tf)
+	defer runner_.Clean()
+
+	service := core.NewService(config, runner_, db, git)
+	defer service.Close()
+
+	server_ := server.NewServer(config, service)
+
+	err = service.Start()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = runner_.Start(service)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	log.Fatalln(server_.Start())
 }
