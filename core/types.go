@@ -4,8 +4,8 @@ import "time"
 
 type (
 	Config struct {
+		Address    string
 		DataDir    string
-		Port       int
 		Projects   map[string]*Project
 		Repos      map[string]*GitCredential
 		NumWorkers int

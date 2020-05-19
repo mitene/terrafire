@@ -13,12 +13,7 @@ func GetConfig() (config *Config, err error) {
 
 	envs := getEnvs()
 
-	port := getEnvWithDefault("TERRAFIRE_PORT", "8080")
-	config.Port, err = strconv.Atoi(port)
-	if err != nil {
-		return nil, fmt.Errorf("invalid port config: %s", port)
-	}
-
+	config.Address = getEnvWithDefault("TERRAFIRE_ADDRESS", "127.0.0.1:8080")
 	config.DataDir = getEnvWithDefault("TERRAFIRE_DATA_DIR", "/usr/local/var/lib/terrafire")
 
 	config.Projects, err = getProjectConfig(envs)

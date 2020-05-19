@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/mitene/terrafire/core"
@@ -39,7 +38,7 @@ func NewServer(config *core.Config, service core.ServiceProvider) *Server {
 }
 
 func (s *Server) Start() error {
-	return s.echo.Start(fmt.Sprintf(":%d", s.config.Port))
+	return s.echo.Start(s.config.Address)
 }
 
 func (s *Server) listProjects(c echo.Context) error {
