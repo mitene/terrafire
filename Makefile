@@ -1,10 +1,13 @@
 ALL := ./cmd/terrafire ./core ./database ./runner ./server ./utils
 
 .PHONY: build
-build:
-	(cd ui && npm run-script build)
-	rice embed-go -i ./server
+build: ui
 	go build -o bin/terrafire ./cmd/terrafire
+
+.PHONY: ui
+ui:
+	(cd ui && npm run build)
+	rice embed-go -i ./server
 
 .PHONY: test
 test:
@@ -13,3 +16,7 @@ test:
 .PHONY: fmt
 fmt:
 	go fmt $(ALL)
+
+.PHONY: run
+run:
+	go run ./cmd/terrafire
