@@ -50,7 +50,7 @@ export function WorkspaceDetail(props: any) {
     const [ws, reloadWs] = useWorkspace(project, workspace);
     const [js, reloadJs] = useJobs(project, workspace);
 
-    const planAvailable = ws && ws.last_job && ![api.JobStatus.Pending, api.JobStatus.PlanInProgress, api.JobStatus.ApplyInProgress].includes(ws.last_job.status);
+    const planAvailable = ws && (!ws.last_job || ![api.JobStatus.Pending, api.JobStatus.PlanInProgress, api.JobStatus.ApplyInProgress].includes(ws.last_job.status));
     const applyAvailable = ws && ws.last_job && [api.JobStatus.ReviewRequired].includes(ws.last_job.status);
 
     function submitJob(e: any) {
