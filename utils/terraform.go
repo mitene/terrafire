@@ -52,7 +52,7 @@ func (t *Terraform) Plan(dir string, workspace *core.Workspace, output io.Writer
 		return "", err
 	}
 
-	out, err := t.output(dir, "show", "-no-color", "tfplan")
+	out, err := t.output(dir, output, envs, "show", "-no-color", "tfplan")
 	if err != nil {
 		return "", err
 	}
@@ -105,8 +105,17 @@ func (t *Terraform) run(dir string, output io.Writer, envs map[string]string, ar
 	return cmd.Run()
 }
 
-func (t *Terraform) output(dir string, arg ...string) ([]byte, error) {
+func (t *Terraform) output(dir string, output io.Writer, envs map[string]string, arg ...string) ([]byte, error) {
 	cmd := exec.Command("terraform", arg...)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "TF_IN_AUTOMATION=true")
+	for k, v := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+	if output == nil {
+		cmd.Stderr = os.Stderr
+	} else {
+		cmd.Stderr = output
+	}
 	return cmd.Output()
 }
