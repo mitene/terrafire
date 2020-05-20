@@ -93,7 +93,6 @@ func (t *Terraform) run(dir string, output io.Writer, envs map[string]string, ar
 	for k, v := range envs {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
-	cmd.Env = append(os.Environ())
 
 	if output == nil {
 		cmd.Stdout = os.Stdout
