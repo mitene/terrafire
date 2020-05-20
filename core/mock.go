@@ -10,6 +10,10 @@ func (s *ServiceMock) GetProjects() map[string]*Project {
 	return s.Called().Get(0).(map[string]*Project)
 }
 
+func (s *ServiceMock) RefreshProject(project string) error {
+	return s.Called(project).Error(0)
+}
+
 func (s *ServiceMock) GetWorkspaces(projectName string) (map[string]*Workspace, error) {
 	args := s.Called(projectName)
 	return args.Get(0).(map[string]*Workspace), args.Error(1)
@@ -86,6 +90,7 @@ func (m *GitMock) Clean() error {
 	return m.Called().Error(0)
 }
 
-func (m *GitMock) Fetch(dir string, repo string, branch string) error {
-	return m.Called(dir, repo, branch).Error(0)
+func (m *GitMock) Fetch(dir string, repo string, branch string) (string, error) {
+	args := m.Called(dir, repo, branch)
+	return args.String(0), args.Error(1)
 }

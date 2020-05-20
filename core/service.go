@@ -51,6 +51,15 @@ func (s *Service) GetProjects() map[string]*Project {
 	return s.projects
 }
 
+func (s *Service) RefreshProject(project string) error {
+	svc, ok := s.projectServices[project]
+	if !ok {
+		return fmt.Errorf("project %s is not defined", project)
+	}
+
+	return svc.refresh()
+}
+
 func (s *Service) GetProject(project string) (*Project, error) {
 	pj, ok := s.projects[project]
 	if !ok {
@@ -74,6 +83,11 @@ func (s *Service) GetWorkspaces(project string) (map[string]*Workspace, error) {
 }
 
 func (s *Service) GetWorkspace(project string, workspace string) (*Workspace, error) {
+	pj, err := s.GetProject(project)
+	if err != nil {
+		return nil, err
+	}
+
 	wss, err := s.GetWorkspaces(project)
 	if err != nil {
 		return nil, err
@@ -83,6 +97,8 @@ func (s *Service) GetWorkspace(project string, workspace string) (*Workspace, er
 	if !ok {
 		return nil, fmt.Errorf("workspace %s is not defined", workspace)
 	}
+
+	ws.Project = pj
 
 	job, err := s.db.GetWorkspaceJob(project, workspace)
 	if err != nil {

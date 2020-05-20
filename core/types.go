@@ -24,6 +24,7 @@ type (
 		Repo   string `json:"repo"`
 		Branch string `json:"branch"`
 		Path   string `json:"path"`
+		Commit string `json:"commit,omitempty"`
 	}
 
 	Manifest struct {
@@ -37,6 +38,7 @@ type (
 		Vars      map[string]string `json:"vars"`
 		VarFiles  []string          `json:"var_files"`
 		LastJob   *Job              `json:"last_job,omitempty"`
+		Project   *Project          `json:"project"`
 	}
 
 	Source struct {
@@ -64,6 +66,7 @@ type (
 
 	ServiceProvider interface {
 		GetProjects() map[string]*Project
+		RefreshProject(project string) error
 		GetWorkspaces(project string) (map[string]*Workspace, error)
 		GetWorkspace(project string, workspace string) (*Workspace, error)
 		SubmitJob(project string, workspace string) (*Job, error)
@@ -103,7 +106,7 @@ type (
 	Git interface {
 		Init(credentials map[string]*GitCredential) error
 		Clean() error
-		Fetch(dir string, repo string, branch string) error
+		Fetch(dir string, repo string, branch string) (string, error)
 	}
 )
 

@@ -3,6 +3,7 @@ export interface Project {
     repo: string
     branch: string
     path: string
+    commit: string | null
 }
 
 export interface Workspace {
@@ -12,6 +13,7 @@ export interface Workspace {
     vars: any
     var_files: string[]
     last_job: Job
+    project: Project | null
 }
 
 export interface Source {
@@ -62,6 +64,10 @@ async function api(method: string, path: string): Promise<any> {
 export async function listProjects(): Promise<Project[]> {
     const data = await api("GET", "/projects");
     return Object.values(data["projects"]);
+}
+
+export async function refreshProject(project: string): Promise<any> {
+    return await api("POST", `/projects/${project}/refresh`);
 }
 
 export async function listWorkspaces(project: string): Promise<Map<string, Workspace>> {

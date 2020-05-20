@@ -25,6 +25,7 @@ func NewServer(config *core.Config, service core.ServiceProvider) *Server {
 	//s.echo.Logger.SetLevel(log.INFO)
 
 	s.echo.GET("/api/v1/projects", s.listProjects)
+	s.echo.POST("/api/v1/projects/:name/refresh", s.refreshProject)
 	s.echo.GET("/api/v1/projects/:name/workspaces", s.listWorkspaces)
 	s.echo.GET("/api/v1/projects/:project/workspaces/:workspace", s.getWorkspace)
 	s.echo.GET("/api/v1/projects/:project_name/workspaces/:workspace_name/jobs", s.getJobs)
@@ -44,6 +45,15 @@ func (s *Server) Start() error {
 func (s *Server) listProjects(c echo.Context) error {
 	pjs := s.service.GetProjects()
 	return c.JSON(http.StatusOK, map[string]interface{}{"projects": pjs})
+}
+
+func (s *Server) refreshProject(c echo.Context) error {
+	name := c.Param("name")
+	err := s.service.RefreshProject(name)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, nil)
 }
 
 func (s *Server) listWorkspaces(c echo.Context) error {

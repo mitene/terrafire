@@ -70,17 +70,31 @@ func (g *git) Clean() error {
 	return nil
 }
 
-func (g *git) Fetch(dir string, repo string, branch string) error {
+func (g *git) Fetch(dir string, repo string, branch string) (string, error) {
 	if _, err := os.Stat(filepath.Join(dir, ".Git")); err == nil {
 		err := g.run(dir, "fetch", "origin", branch, "--depth=1")
 		if err != nil {
-			return err
+			return "", err
 		}
 
-		return g.run(dir, "reset", "--hard", "origin/"+branch)
+		err = g.run(dir, "reset", "--hard", "origin/"+branch)
+		if err != nil {
+			return "", err
+		}
 	} else {
-		return g.run(dir, "clone", repo, ".", "--depth=1", "--branch="+branch, "--single-branch")
+		err = g.run(dir, "clone", repo, ".", "--depth=1", "--branch="+branch, "--single-branch")
+		if err != nil {
+			return "", err
+		}
 	}
+
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = dir
+	rev, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(rev), nil
 }
 
 func (g *git) run(dir string, arg ...string) error {

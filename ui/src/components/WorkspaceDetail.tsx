@@ -53,6 +53,12 @@ export function WorkspaceDetail(props: any) {
     const planAvailable = ws && (!ws.last_job || ![api.JobStatus.Pending, api.JobStatus.PlanInProgress, api.JobStatus.ApplyInProgress].includes(ws.last_job.status));
     const applyAvailable = ws && ws.last_job && [api.JobStatus.ReviewRequired].includes(ws.last_job.status);
 
+    function refreshProject() {
+        api.refreshProject(project).then(() => {
+            reloadWs();
+        });
+    }
+
     function submitJob(e: any) {
         api.submitJob(project, workspace).then(() => {
             reloadWs();
@@ -74,20 +80,26 @@ export function WorkspaceDetail(props: any) {
                 <Grid item xs={12}>
                     <Paper className={classes.paper}>
                         <Title>{ws.name}</Title>
-                        {ws && ws.last_job &&
-                        <Typography>Status: {api.JobStatus[ws.last_job.status]}</Typography>
-                        }
+                        current project commit: {ws?.project?.commit}
                         <Grid container spacing={3}>
                             <Grid item xs>
+                                <Button size="small" variant="contained"
+                                        onClick={refreshProject}>Refresh</Button>
                                 <Button size="small" variant="contained" color="primary"
                                         onClick={submitJob}
                                         disabled={!planAvailable}>Plan</Button>
                                 <Button size="small" variant="contained" color="secondary"
                                         onClick={approveJob}
                                         disabled={!applyAvailable}>Apply</Button>
-                                {/*<Button size="small" variant="contained" component={RouterLink} to={"/job/" + ws.job_id} disabled={!jobAvailable}>Detail</Button>*/}
                             </Grid>
                         </Grid>
+                    </Paper>
+                </Grid>
+                }
+                {ws && ws.last_job &&
+                <Grid item xs={12}>
+                    <Paper className={classes.paper}>
+                        <Typography>Status: {api.JobStatus[ws.last_job.status]}</Typography>
                     </Paper>
                 </Grid>
                 }

@@ -22,7 +22,7 @@ workspace "app" {
 }
 `), 0644)
 		assert.NoError(t, err)
-	}).Return(nil)
+	}).Return("some_commit_hash", nil)
 
 	svc := NewService(&Config{
 		Projects: map[string]*Project{
