@@ -15,22 +15,24 @@ func NewTerraform() *Terraform {
 }
 
 func (t *Terraform) Plan(dir string, workspace *core.Workspace, output io.Writer) (result string, err error) {
+	envs := workspace.Project.Envs
+
 	src, err := t.formatModuleAddr(workspace)
 	if err != nil {
 		return "", err
 	}
 
 	// download source code and initialize
-	err = t.run(dir, output, "init", "-from-module="+src, "-input=false", "-no-color")
+	err = t.run(dir, output, envs, "init", "-from-module="+src, "-input=false", "-no-color")
 	if err != nil {
 		return "", err
 	}
 
 	// select workspace
 	if workspace.Workspace != "" {
-		err = t.run(dir, output, "workspace", "select", "-no-color", workspace.Workspace)
+		err = t.run(dir, output, envs, "workspace", "select", "-no-color", workspace.Workspace)
 		if err != nil {
-			err = t.run(dir, output, "workspace", "new", "-no-color", workspace.Workspace)
+			err = t.run(dir, output, envs, "workspace", "new", "-no-color", workspace.Workspace)
 			if err != nil {
 				return "", err
 			}
@@ -45,7 +47,7 @@ func (t *Terraform) Plan(dir string, workspace *core.Workspace, output io.Writer
 	for k, v := range workspace.Vars {
 		args = append(args, fmt.Sprintf("-var=%s=%s", k, v))
 	}
-	err = t.run(dir, output, args...)
+	err = t.run(dir, output, envs, args...)
 	if err != nil {
 		return "", err
 	}
@@ -58,8 +60,9 @@ func (t *Terraform) Plan(dir string, workspace *core.Workspace, output io.Writer
 	return string(out), nil
 }
 
-func (t *Terraform) Apply(dir string, output io.Writer) (err error) {
-	return t.run(dir, output, "apply", "-no-color", "-input=false", "tfplan")
+func (t *Terraform) Apply(dir string, workspace *core.Workspace, output io.Writer) (err error) {
+	envs := workspace.Project.Envs
+	return t.run(dir, output, envs, "apply", "-no-color", "-input=false", "tfplan")
 }
 
 func (t *Terraform) formatModuleAddr(workspace *core.Workspace) (string, error) {
@@ -83,10 +86,15 @@ func (t *Terraform) formatModuleAddr(workspace *core.Workspace) (string, error) 
 	}
 }
 
-func (t *Terraform) run(dir string, output io.Writer, arg ...string) error {
+func (t *Terraform) run(dir string, output io.Writer, envs map[string]string, arg ...string) error {
 	cmd := exec.Command("terraform", arg...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "TF_IN_AUTOMATION=true")
+	for k, v := range envs {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
+	}
+	cmd.Env = append(os.Environ())
+
 	if output == nil {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr

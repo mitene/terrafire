@@ -146,7 +146,7 @@ func (r *LocalRunner) doApply(payload *payload, h core.ServiceProvider) {
 		finish = true
 	}()
 
-	err := r.tf.Apply(dir, output)
+	err := r.tf.Apply(dir, payload.workspace, output)
 	if err != nil {
 		logError(h.UpdateJobStatusApplyFailed(payload.project, payload.workspace.Name, err))
 		return

@@ -25,6 +25,7 @@ type (
 		Branch string `json:"branch"`
 		Path   string `json:"path"`
 		Commit string `json:"commit,omitempty"`
+		Envs   map[string]string
 	}
 
 	Manifest struct {

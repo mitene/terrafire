@@ -60,7 +60,7 @@ func getEnvWithDefault(key string, default_ string) string {
 
 func getProjectConfig(envs map[string]string) (map[string]*Project, error) {
 	ret := map[string]*Project{}
-	re := regexp.MustCompile(`\ATERRAFIRE_PROJECT_([^_]+)(|_BRANCH|_PATH)\z`)
+	re := regexp.MustCompile(`\ATERRAFIRE_PROJECT_([^_]+)(|_BRANCH|_PATH|_ENV_.*)\z`)
 	for key, val := range envs {
 		m := re.FindStringSubmatch(key)
 		if m == nil {
@@ -71,6 +71,7 @@ func getProjectConfig(envs map[string]string) (map[string]*Project, error) {
 		if _, ok := ret[name]; !ok {
 			ret[name] = &Project{
 				Name: name,
+				Envs: map[string]string{},
 			}
 		}
 
@@ -81,6 +82,11 @@ func getProjectConfig(envs map[string]string) (map[string]*Project, error) {
 			ret[name].Branch = val
 		case "_PATH":
 			ret[name].Path = val
+		default:
+			if strings.HasPrefix(attr, "_ENV_") {
+				key := strings.TrimPrefix(attr, "_ENV_")
+				ret[name].Envs[key] = val
+			}
 		}
 	}
 

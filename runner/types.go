@@ -16,7 +16,7 @@ type (
 
 	Terraform interface {
 		Plan(dir string, workspace *core.Workspace, output io.Writer) (string, error)
-		Apply(dir string, output io.Writer) error
+		Apply(dir string, workspace *core.Workspace, output io.Writer) error
 	}
 )
 

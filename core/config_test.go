@@ -35,6 +35,7 @@ func TestGetProjectConfig(t *testing.T) {
 		Repo:   "https://github.com/foo/bar",
 		Branch: "master",
 		Path:   "",
+		Envs:   map[string]string{},
 	}
 	if !reflect.DeepEqual(*prjs["dev"], expected1) {
 		t.Fatalf("project dev, got %q, want %q", *prjs["dev"], expected1)
@@ -45,6 +46,7 @@ func TestGetProjectConfig(t *testing.T) {
 		Repo:   "https://github.com/foo/bar1",
 		Branch: "dev",
 		Path:   "subdir",
+		Envs:   map[string]string{},
 	}
 	if !reflect.DeepEqual(*prjs["dev-1"], expected2) {
 		t.Fatalf("project dev-1, got %q, want %q", *prjs["dev-1"], expected2)
