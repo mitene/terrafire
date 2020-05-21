@@ -1,8 +1,8 @@
-ALL := ./cmd/terrafire ./core ./database ./runner ./server ./utils
+ALL := ./cmd/terrafire ./controller ./database ./executor ./server ./utils .
 
 .PHONY: build
 build: ui
-	go build -o bin/terrafire ./cmd/terrafire
+	go build -o dist/terrafire ./cmd/terrafire
 
 .PHONY: ui
 ui:

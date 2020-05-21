@@ -3,21 +3,21 @@ package server
 import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/mitene/terrafire/core"
+	"github.com/mitene/terrafire"
 	"net/http"
 	"strconv"
 )
 
 type Server struct {
-	config  *core.Config
-	service core.ServiceProvider
+	config  *terrafire.Config
+	handler terrafire.Handler
 	echo    *echo.Echo
 }
 
-func NewServer(config *core.Config, service core.ServiceProvider) *Server {
+func NewServer(config *terrafire.Config, handler terrafire.Handler) *Server {
 	s := &Server{
 		config:  config,
-		service: service,
+		handler: handler,
 		echo:    echo.New(),
 	}
 
@@ -43,13 +43,13 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) listProjects(c echo.Context) error {
-	pjs := s.service.GetProjects()
+	pjs := s.handler.GetProjects()
 	return c.JSON(http.StatusOK, map[string]interface{}{"projects": pjs})
 }
 
 func (s *Server) refreshProject(c echo.Context) error {
 	name := c.Param("name")
-	err := s.service.RefreshProject(name)
+	err := s.handler.RefreshProject(name)
 	if err != nil {
 		return err
 	}
@@ -59,7 +59,7 @@ func (s *Server) refreshProject(c echo.Context) error {
 func (s *Server) listWorkspaces(c echo.Context) error {
 	project := c.Param("name")
 
-	ws, err := s.service.GetWorkspaces(project)
+	ws, err := s.handler.GetWorkspaces(project)
 	if err != nil {
 		return err
 	}
@@ -71,7 +71,7 @@ func (s *Server) getWorkspace(c echo.Context) error {
 	project := c.Param("project")
 	workspace := c.Param("workspace")
 
-	ws, err := s.service.GetWorkspace(project, workspace)
+	ws, err := s.handler.GetWorkspaceInfo(project, workspace)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (s *Server) submitJob(c echo.Context) error {
 	project := c.Param("project_name")
 	workspace := c.Param("workspace_name")
 
-	job, err := s.service.SubmitJob(project, workspace)
+	job, err := s.handler.SubmitJob(project, workspace)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (s *Server) approveJob(c echo.Context) error {
 	project := c.Param("project_name")
 	workspace := c.Param("workspace_name")
 
-	err := s.service.ApproveJob(project, workspace)
+	err := s.handler.ApproveJob(project, workspace)
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (s *Server) getJobs(c echo.Context) error {
 	project := c.Param("project_name")
 	workspace := c.Param("workspace_name")
 
-	jobs, err := s.service.GetJobs(project, workspace)
+	jobs, err := s.handler.GetJobs(project, workspace)
 	if err != nil {
 		return err
 	}
@@ -121,7 +121,7 @@ func (s *Server) getJob(c echo.Context) error {
 		return err
 	}
 
-	job, err := s.service.GetJob(core.JobId(jobId))
+	job, err := s.handler.GetJob(terrafire.JobId(jobId))
 	if err != nil {
 		return err
 	}

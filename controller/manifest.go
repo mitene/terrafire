@@ -1,9 +1,10 @@
-package core
+package controller
 
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/gohcl"
 	"github.com/hashicorp/hcl/v2/hclparse"
+	"github.com/mitene/terrafire"
 	"github.com/zclconf/go-cty/cty"
 	ctyjson "github.com/zclconf/go-cty/cty/json"
 	"io/ioutil"
@@ -11,7 +12,7 @@ import (
 )
 
 // Parse all `*.hcl` files in the given directory.
-func LoadManifest(dirPath string) (*Manifest, error) {
+func LoadManifest(dirPath string) (*terrafire.Manifest, error) {
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -58,8 +59,8 @@ func LoadManifest(dirPath string) (*Manifest, error) {
 		return nil, diags
 	}
 
-	out := &Manifest{
-		Workspaces: map[string]*Workspace{},
+	out := &terrafire.Manifest{
+		Workspaces: map[string]*terrafire.Workspace{},
 	}
 	for _, d := range config.Workspaces {
 		vars, err := convertRawVars(d.RawVars)
@@ -72,9 +73,9 @@ func LoadManifest(dirPath string) (*Manifest, error) {
 			return nil, err
 		}
 
-		out.Workspaces[d.Name] = &Workspace{
+		out.Workspaces[d.Name] = &terrafire.Workspace{
 			Name: d.Name,
-			Source: &Source{
+			Source: &terrafire.Source{
 				Type:  d.Source.Type,
 				Owner: d.Source.Owner,
 				Repo:  d.Source.Repo,

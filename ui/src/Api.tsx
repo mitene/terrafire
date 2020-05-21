@@ -6,14 +6,24 @@ export interface Project {
     commit: string | null
 }
 
+export interface ProjectInfo {
+    project: Project
+    commit: string
+    error: string
+}
+
 export interface Workspace {
     name: string
     source: Source
     workspace: string
     vars: any
     var_files: string[]
+}
+
+export interface WorkspaceInfo {
+    project: ProjectInfo
+    workspace: Workspace
     last_job: Job
-    project: Project | null
 }
 
 export interface Source {
@@ -40,6 +50,7 @@ export enum JobStatus {
     Pending,
     PlanInProgress,
     ReviewRequired,
+    ApplyPending,
     ApplyInProgress,
     Succeeded,
     PlanFailed,
@@ -75,7 +86,7 @@ export async function listWorkspaces(project: string): Promise<Map<string, Works
     return new Map(Object.entries(data["workspaces"]));
 }
 
-export async function getWorkspace(project: string, workspace: string): Promise<Workspace> {
+export async function getWorkspace(project: string, workspace: string): Promise<WorkspaceInfo> {
     return await api("GET", `/projects/${project}/workspaces/${workspace}`);
 }
 

@@ -1,4 +1,4 @@
-package core
+package terrafire
 
 import (
 	"fmt"
@@ -31,6 +31,9 @@ func GetConfig() (config *Config, err error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid num_worker config: %s", num)
 	}
+
+	config.DbDriver = "sqlite3"
+	config.DbSource = os.Getenv("TERRAFIRE_DB_SOURCE")
 
 	return config, nil
 }

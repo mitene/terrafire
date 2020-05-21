@@ -8,13 +8,13 @@ import {Link as RouterLink} from "react-router-dom";
 import React, {useEffect, useState} from "react";
 
 import * as globalStyle from "./styles"
-import * as api from "../Api";
+import * as api from "./Api";
 import Card from "@material-ui/core/Card";
 import CardActionArea from "@material-ui/core/CardActionArea";
 import {CardContent} from "@material-ui/core";
 
-function useWorkspace(project: string, workspace: string): [api.Workspace | null, () => void] {
-    const [w, setW] = useState<api.Workspace | null>(null);
+function useWorkspace(project: string, workspace: string): [api.WorkspaceInfo | null, () => void] {
+    const [w, setW] = useState<api.WorkspaceInfo | null>(null);
 
     function reload() {
         api.getWorkspace(project, workspace).then(setW);
@@ -59,14 +59,14 @@ export function WorkspaceDetail(props: any) {
         });
     }
 
-    function submitJob(e: any) {
+    function submitJob() {
         api.submitJob(project, workspace).then(() => {
             reloadWs();
             reloadJs();
         });
     }
 
-    function approveJob(e: any) {
+    function approveJob() {
         api.approveJob(project, workspace).then(() => {
             reloadWs();
             reloadJs();
@@ -79,8 +79,8 @@ export function WorkspaceDetail(props: any) {
                 {ws &&
                 <Grid item xs={12}>
                     <Paper className={classes.paper}>
-                        <Title>{ws.name}</Title>
-                        current project commit: {ws?.project?.commit}
+                        <Title>{ws.workspace.name}</Title>
+                        current project commit: {ws?.project.commit}
                         <Grid container spacing={3}>
                             <Grid item xs>
                                 <Button size="small" variant="contained"

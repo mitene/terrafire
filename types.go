@@ -1,6 +1,8 @@
-package core
+package terrafire
 
-import "time"
+import (
+	"time"
+)
 
 type (
 	Config struct {
@@ -9,6 +11,8 @@ type (
 		Projects   map[string]*Project
 		Repos      map[string]*GitCredential
 		NumWorkers int
+		DbDriver   string
+		DbSource   string
 	}
 
 	GitCredential struct {
@@ -19,17 +23,31 @@ type (
 		Password string
 	}
 
+	ProjectRepository map[string]*ProjectInfo
+
+	ProjectInfo struct {
+		Project  *Project  `json:"project"`
+		Manifest *Manifest `json:"-"`
+		Commit   string    `json:"commit"`
+		Error    string    `json:"error"`
+	}
+
 	Project struct {
-		Name   string `json:"name"`
-		Repo   string `json:"repo"`
-		Branch string `json:"branch"`
-		Path   string `json:"path"`
-		Commit string `json:"commit,omitempty"`
-		Envs   map[string]string
+		Name   string            `json:"name"`
+		Repo   string            `json:"repo"`
+		Branch string            `json:"branch"`
+		Path   string            `json:"path"`
+		Envs   map[string]string `json:"-"`
 	}
 
 	Manifest struct {
 		Workspaces map[string]*Workspace
+	}
+
+	WorkspaceInfo struct {
+		Project   *ProjectInfo `json:"project"`
+		Workspace *Workspace   `json:"workspace"`
+		LastJob   *Job         `json:"last_job,omitempty"`
 	}
 
 	Workspace struct {
@@ -38,8 +56,6 @@ type (
 		Workspace string            `json:"workspace"`
 		Vars      map[string]string `json:"vars"`
 		VarFiles  []string          `json:"var_files"`
-		LastJob   *Job              `json:"last_job,omitempty"`
-		Project   *Project          `json:"project"`
 	}
 
 	Source struct {
@@ -65,11 +81,20 @@ type (
 	JobId     uint
 	JobStatus int
 
-	ServiceProvider interface {
+	Action struct {
+		Type      ActionType
+		Project   string
+		Workspace string
+	}
+	ActionType int
+
+	Handler interface {
+		GetActions() chan *Action
 		GetProjects() map[string]*Project
+		UpdateProjectInfo(project string, info *ProjectInfo) error
 		RefreshProject(project string) error
 		GetWorkspaces(project string) (map[string]*Workspace, error)
-		GetWorkspace(project string, workspace string) (*Workspace, error)
+		GetWorkspaceInfo(project string, workspace string) (*WorkspaceInfo, error)
 		SubmitJob(project string, workspace string) (*Job, error)
 		ApproveJob(project string, workspace string) error
 		GetJobs(project string, workspace string) ([]*Job, error)
@@ -84,29 +109,40 @@ type (
 		SaveApplyLog(project string, workspace string, log string) error
 	}
 
-	JobRunner interface {
-		Plan(project string, workspace *Workspace) error
-		Apply(project string, workspace *Workspace) error
+	Executor interface {
+		Plan(payload *ExecutorPayload) error
+		Apply(payload *ExecutorPayload) error
+	}
+
+	ExecutorPayload struct {
+		Workspace *Workspace
+		Project   *Project
+	}
+
+	Blob interface {
+		New(project string, workspace string) (string, error)
+		Get(project string, workspace string) (string, error)
+		Put(project string, workspace string) error
 	}
 
 	DB interface {
 		CreateJob(project *Project, workspace *Workspace) (JobId, error)
 		GetJobs(project string, workspace string) ([]*Job, error)
-		GetJob(jobId JobId) (*Job, error)
-		GetWorkspaceJob(project string, workspace string) (*Job, error)
+		GetJob(project string, workspace string) (*Job, error)
 		UpdateJobStatusPlanInProgress(project string, workspace string) error
 		UpdateJobStatusReviewRequired(project string, workspace string, result string) error
+		UpdateJobStatusApplyPending(project string, workspace string) error
 		UpdateJobStatusApplyInProgress(project string, workspace string) error
 		UpdateJobStatusSucceeded(project string, workspace string) error
 		UpdateJobStatusPlanFailed(project string, workspace string, err error) error
 		UpdateJobStatusApplyFailed(project string, workspace string, err error) error
 		SavePlanLog(project string, workspace string, log string) error
 		SaveApplyLog(project string, workspace string, log string) error
+		GetJobHistory(jobId JobId) (*Job, error)
 	}
 
 	Git interface {
 		Init(credentials map[string]*GitCredential) error
-		Clean() error
 		Fetch(dir string, repo string, branch string) (string, error)
 	}
 )
@@ -115,8 +151,16 @@ const (
 	JobStatusPending JobStatus = iota
 	JobStatusPlanInProgress
 	JobStatusReviewRequired
+	JobStatusApplyPending
 	JobStatusApplyInProgress
 	JobStatusSucceeded
 	JobStatusPlanFailed
 	JobStatusApplyFailed
+)
+
+const (
+	ActionTypeRefresh ActionType = iota
+	ActionTypeRefreshAll
+	ActionTypeSubmit
+	ActionTypeApprove
 )

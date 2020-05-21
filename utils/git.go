@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/mitene/terrafire/core"
+	"github.com/mitene/terrafire"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,17 +12,12 @@ type git struct {
 	dir string
 }
 
-func NewGit() core.Git {
-	return &git{}
+func NewGit(dir string) terrafire.Git {
+	return &git{dir: dir}
 }
 
-func (g *git) Init(credentials map[string]*core.GitCredential) (err error) {
+func (g *git) Init(credentials map[string]*terrafire.GitCredential) (err error) {
 	gitpath, err := exec.LookPath("git")
-	if err != nil {
-		return err
-	}
-
-	g.dir, err = ioutil.TempDir("", "terrafire-git")
 	if err != nil {
 		return err
 	}
@@ -61,13 +56,6 @@ func (g *git) Init(credentials map[string]*core.GitCredential) (err error) {
 	}
 
 	return os.Setenv("PATH", bindir+string(os.PathListSeparator)+os.Getenv("PATH"))
-}
-
-func (g *git) Clean() error {
-	if g.dir != "" {
-		return os.RemoveAll(g.dir)
-	}
-	return nil
 }
 
 func (g *git) Fetch(dir string, repo string, branch string) (string, error) {

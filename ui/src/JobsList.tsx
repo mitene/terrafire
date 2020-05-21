@@ -8,7 +8,7 @@ import Typography from "@material-ui/core/Typography";
 import React, {useEffect, useState} from "react";
 
 import * as globalStyle from './styles';
-import * as api from "../Api";
+import * as api from "./Api";
 
 function useJobs(project: string, workspace: string): api.Job[] {
     const [jobs, setJobs] = useState<api.Job[]>([]);

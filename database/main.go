@@ -1,9 +1,10 @@
 package database
 
 import (
+	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/mitene/terrafire/core"
+	"github.com/mitene/terrafire"
 	"os"
 	"path/filepath"
 )
@@ -13,15 +14,29 @@ type DB struct {
 	Workspaces *Workspaces
 }
 
-func NewDB(config *core.Config) (*DB, error) {
-	path := filepath.Join(config.DataDir, "db", "sqlite3.db")
+func NewDB(config *terrafire.Config) (*DB, error) {
+	var source string
+	switch config.DbDriver {
+	case "sqlite3":
+		{
+			source = config.DbSource
 
-	err := os.MkdirAll(filepath.Dir(path), 0755)
-	if err != nil {
-		return nil, err
+			if source == "" {
+				source = filepath.Join(config.DataDir, "db", "sqlite3.db")
+			}
+
+			if source != ":memory:" {
+				err := os.MkdirAll(filepath.Dir(source), 0755)
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+	default:
+		return nil, fmt.Errorf("invalid db driver: %s", config.DbDriver)
 	}
 
-	db, err := gorm.Open("sqlite3", path)
+	db, err := gorm.Open("sqlite3", source)
 	if err != nil {
 		return nil, err
 	}

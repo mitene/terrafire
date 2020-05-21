@@ -5,7 +5,7 @@ import Title from "./Title";
 import Typography from "@material-ui/core/Typography";
 import React, {useEffect, useState} from "react";
 import * as globalStyle from "./styles"
-import * as api from "../Api";
+import * as api from "./Api";
 
 function useJob(job_id: number): [api.Job | null, () => void] {
     const [job, setJob] = useState<api.Job | null>(null);
