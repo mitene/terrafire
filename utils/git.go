@@ -71,7 +71,7 @@ func (g *git) Clean() error {
 }
 
 func (g *git) Fetch(dir string, repo string, branch string) (string, error) {
-	if _, err := os.Stat(filepath.Join(dir, ".Git")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
 		err := g.run(dir, "fetch", "origin", branch, "--depth=1")
 		if err != nil {
 			return "", err
