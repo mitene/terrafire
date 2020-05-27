@@ -42,6 +42,10 @@ func (s *Server) Start() error {
 	return s.echo.Start(s.config.Address)
 }
 
+func (s *Server) Stop() error {
+	return s.echo.Close()
+}
+
 func (s *Server) listProjects(c echo.Context) error {
 	pjs := s.handler.GetProjects()
 	return c.JSON(http.StatusOK, map[string]interface{}{"projects": pjs})

@@ -50,9 +50,8 @@ workspace "app" {
 		receive <- args
 	}).Return(nil)
 
-	err := ctrl.Start()
-	assert.NoError(t, err)
-	defer assert.NoError(t, ctrl.Stop())
+	go func() { assert.NoError(t, ctrl.Start()) }()
+	defer func() { assert.NoError(t, ctrl.Stop()) }()
 
 	actions <- &terrafire.Action{
 		Type:    terrafire.ActionTypeRefresh,

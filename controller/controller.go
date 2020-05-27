@@ -17,7 +17,7 @@ type Controller struct {
 	git      terrafire.Git
 
 	projects terrafire.ProjectRepository
-	done     chan struct{}
+	done     chan interface{}
 	mux      sync.Mutex
 	dir      string
 }
@@ -31,49 +31,47 @@ func New(config *terrafire.Config, handler terrafire.Handler, executor terrafire
 		dir:      dir,
 
 		projects: terrafire.ProjectRepository{},
-		done:     make(chan struct{}),
+		done:     make(chan interface{}),
 		mux:      sync.Mutex{},
 	}
 }
 
 func (c *Controller) Start() error {
-	go func() {
-		ch := c.handler.GetActions()
-		for {
-			select {
-			case action := <-ch:
-				{
-					var err error
+	ch := c.handler.GetActions()
+	for {
+		select {
+		case action := <-ch:
+			{
+				var err error
 
-					switch action.Type {
-					case terrafire.ActionTypeRefresh:
-						err = c.RefreshProject(action.Project)
-					case terrafire.ActionTypeRefreshAll:
-						err = c.RefreshAllProjects()
-					case terrafire.ActionTypeSubmit:
-						err = c.SubmitJob(action.Project, action.Workspace)
-					case terrafire.ActionTypeApprove:
-						err = c.ApproveJob(action.Project, action.Workspace)
-					default:
-						utils.LogError(fmt.Errorf("invalid aciton type: %d", action.Type))
-					}
-
-					utils.LogError(err)
+				switch action.Type {
+				case terrafire.ActionTypeRefresh:
+					err = c.RefreshProject(action.Project)
+				case terrafire.ActionTypeRefreshAll:
+					err = c.RefreshAllProjects()
+				case terrafire.ActionTypeSubmit:
+					err = c.SubmitJob(action.Project, action.Workspace)
+				case terrafire.ActionTypeApprove:
+					err = c.ApproveJob(action.Project, action.Workspace)
+				default:
+					err = fmt.Errorf("invalid aciton type: %d", action.Type)
 				}
-			case _, ok := <-c.done:
-				{
-					if !ok {
-						break
-					}
+
+				utils.LogError(err)
+			}
+		case _, ok := <-c.done:
+			{
+				if !ok {
+					log.Error("controller stopped")
+					return nil
 				}
 			}
 		}
-	}()
-
-	return nil
+	}
 }
 
 func (c *Controller) Stop() error {
+	log.Info("controller is stopping")
 	close(c.done)
 	return nil
 }

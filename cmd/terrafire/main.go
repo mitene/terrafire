@@ -7,29 +7,41 @@ import (
 	"github.com/mitene/terrafire/executor"
 	"github.com/mitene/terrafire/server"
 	"github.com/mitene/terrafire/utils"
-	log "github.com/sirupsen/logrus"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 )
 
 func main() {
+	utils.LogFatal(runServer())
+}
+
+func runServer() error {
 	config, err := terrafire.GetConfig()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	tmp, err := newTempDir()
-	utils.LogFatal(err)
-	defer utils.LogError(tmp.Delete())
+	if err != nil {
+		return err
+	}
+	defer func() { utils.LogError(tmp.Delete()) }()
 
 	gitDir, err := tmp.Create("git")
-	utils.LogFatal(err)
+	if err != nil {
+		return err
+	}
 	git := utils.NewGit(gitDir)
-	utils.LogFatal(git.Init(config.Repos))
+	err = git.Init(config.Repos)
+	if err != nil {
+		return err
+	}
 
 	db, err := database.NewDB(config)
-	utils.LogFatal(err)
+	if err != nil {
+		return err
+	}
 
 	handler := server.NewHandler(config, db)
 	srv := server.NewServer(config, handler)
@@ -39,15 +51,17 @@ func main() {
 	exe := executor.NewLocalExecutor(handler, runner, config.NumWorkers)
 
 	ctrlDir, err := tmp.Create("controller")
-	utils.LogFatal(err)
+	if err != nil {
+		return err
+	}
 	ctrl := controller.New(config, handler, exe, git, ctrlDir)
 
-	utils.LogFatal(ctrl.Start())
-	defer utils.LogError(ctrl.Stop())
+	go func() { utils.LogError(ctrl.Start()) }()
+	defer func() { utils.LogError(ctrl.Stop()) }()
 
 	utils.LogError(handler.RefreshAllProjects())
 
-	log.Fatalln(srv.Start())
+	return srv.Start()
 }
 
 type tempDir struct {
