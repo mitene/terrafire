@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
-	"github.com/mitene/terrafire"
+	"github.com/mitene/terrafire/internal"
 	"os"
 	"path/filepath"
 )
@@ -14,7 +14,7 @@ type DB struct {
 	Workspaces *Workspaces
 }
 
-func NewDB(config *terrafire.Config) (*DB, error) {
+func NewDB(config *internal.Config) (*DB, error) {
 	var source string
 	switch config.DbDriver {
 	case "sqlite3":

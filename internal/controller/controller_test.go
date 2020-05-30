@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/mitene/terrafire"
+	"github.com/mitene/terrafire/internal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io/ioutil"
@@ -12,8 +12,8 @@ import (
 )
 
 func TestController_RefreshProject(t *testing.T) {
-	config := &terrafire.Config{
-		Projects: map[string]*terrafire.Project{
+	config := &internal.Config{
+		Projects: map[string]*internal.Project{
 			"dev": {
 				Name: "dev",
 			},
@@ -32,9 +32,9 @@ workspace "app" {
 	dir, _ := ioutil.TempDir("", "")
 	defer func() { _ = os.RemoveAll(dir) }()
 
-	git := &terrafire.GitMock{}
-	handler := &terrafire.HandlerMock{}
-	executor := &terrafire.ExecutorMock{}
+	git := &internal.GitMock{}
+	handler := &internal.HandlerMock{}
+	executor := &internal.ExecutorMock{}
 	ctrl := New(config, handler, executor, git, dir)
 
 	git.On("Fetch", mock.Anything, mock.Anything, mock.Anything).Run(func(args mock.Arguments) {
@@ -42,7 +42,7 @@ workspace "app" {
 		assert.NoError(t, err)
 	}).Return("some_commit_hash", nil)
 
-	actions := make(chan *terrafire.Action)
+	actions := make(chan *internal.Action)
 	receive := make(chan mock.Arguments)
 
 	handler.On("GetActions").Return(actions)
@@ -53,8 +53,8 @@ workspace "app" {
 	go func() { assert.NoError(t, ctrl.Start()) }()
 	defer func() { assert.NoError(t, ctrl.Stop()) }()
 
-	actions <- &terrafire.Action{
-		Type:    terrafire.ActionTypeRefresh,
+	actions <- &internal.Action{
+		Type:    internal.ActionTypeRefresh,
 		Project: "dev",
 	}
 
@@ -62,13 +62,13 @@ workspace "app" {
 	case args := <-receive:
 		{
 			assert.Equal(t, "dev", args.String(0))
-			assert.Equal(t, &terrafire.ProjectInfo{
+			assert.Equal(t, &internal.ProjectInfo{
 				Project: config.Projects["dev"],
-				Manifest: &terrafire.Manifest{
-					Workspaces: map[string]*terrafire.Workspace{
+				Manifest: &internal.Manifest{
+					Workspaces: map[string]*internal.Workspace{
 						"app": {
 							Name: "app",
-							Source: &terrafire.Source{
+							Source: &internal.Source{
 								Type:  "github",
 								Owner: "foo",
 								Repo:  "bar",

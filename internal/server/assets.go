@@ -13,7 +13,7 @@ type assetsFileSystem struct {
 
 func newAssetsFileSystem() *assetsFileSystem {
 	return &assetsFileSystem{
-		box: rice.MustFindBox("../ui/build"),
+		box: rice.MustFindBox("../../web/build"),
 	}
 }
 

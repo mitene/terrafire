@@ -3,18 +3,18 @@ package server
 import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"github.com/mitene/terrafire"
+	"github.com/mitene/terrafire/internal"
 	"net/http"
 	"strconv"
 )
 
 type Server struct {
-	config  *terrafire.Config
-	handler terrafire.Handler
+	config  *internal.Config
+	handler internal.Handler
 	echo    *echo.Echo
 }
 
-func NewServer(config *terrafire.Config, handler terrafire.Handler) *Server {
+func NewServer(config *internal.Config, handler internal.Handler) *Server {
 	s := &Server{
 		config:  config,
 		handler: handler,
@@ -125,7 +125,7 @@ func (s *Server) getJob(c echo.Context) error {
 		return err
 	}
 
-	job, err := s.handler.GetJob(terrafire.JobId(jobId))
+	job, err := s.handler.GetJob(internal.JobId(jobId))
 	if err != nil {
 		return err
 	}

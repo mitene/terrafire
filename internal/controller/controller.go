@@ -2,8 +2,8 @@ package controller
 
 import (
 	"fmt"
-	"github.com/mitene/terrafire"
-	"github.com/mitene/terrafire/utils"
+	"github.com/mitene/terrafire/internal"
+	"github.com/mitene/terrafire/internal/utils"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
@@ -11,18 +11,18 @@ import (
 )
 
 type Controller struct {
-	config   *terrafire.Config
-	handler  terrafire.Handler
-	executor terrafire.Executor
-	git      terrafire.Git
+	config   *internal.Config
+	handler  internal.Handler
+	executor internal.Executor
+	git      internal.Git
 
-	projects terrafire.ProjectRepository
+	projects internal.ProjectRepository
 	done     chan interface{}
 	mux      sync.Mutex
 	dir      string
 }
 
-func New(config *terrafire.Config, handler terrafire.Handler, executor terrafire.Executor, git terrafire.Git, dir string) *Controller {
+func New(config *internal.Config, handler internal.Handler, executor internal.Executor, git internal.Git, dir string) *Controller {
 	return &Controller{
 		config:   config,
 		handler:  handler,
@@ -30,7 +30,7 @@ func New(config *terrafire.Config, handler terrafire.Handler, executor terrafire
 		git:      git,
 		dir:      dir,
 
-		projects: terrafire.ProjectRepository{},
+		projects: internal.ProjectRepository{},
 		done:     make(chan interface{}),
 		mux:      sync.Mutex{},
 	}
@@ -45,13 +45,13 @@ func (c *Controller) Start() error {
 				var err error
 
 				switch action.Type {
-				case terrafire.ActionTypeRefresh:
+				case internal.ActionTypeRefresh:
 					err = c.RefreshProject(action.Project)
-				case terrafire.ActionTypeRefreshAll:
+				case internal.ActionTypeRefreshAll:
 					err = c.RefreshAllProjects()
-				case terrafire.ActionTypeSubmit:
+				case internal.ActionTypeSubmit:
 					err = c.SubmitJob(action.Project, action.Workspace)
-				case terrafire.ActionTypeApprove:
+				case internal.ActionTypeApprove:
 					err = c.ApproveJob(action.Project, action.Workspace)
 				default:
 					err = fmt.Errorf("invalid aciton type: %d", action.Type)
@@ -99,7 +99,7 @@ func (c *Controller) RefreshProject(project string) (err error) {
 	log.WithField("project", project).Info("start refresh")
 
 	if _, ok := c.projects[project]; !ok {
-		c.projects[project] = &terrafire.ProjectInfo{}
+		c.projects[project] = &internal.ProjectInfo{}
 	}
 	info, _ := c.projects[project]
 
@@ -147,7 +147,7 @@ func (c *Controller) SubmitJob(project string, workspace string) error {
 		return err
 	}
 
-	err = c.executor.Plan(&terrafire.ExecutorPayload{
+	err = c.executor.Plan(&internal.ExecutorPayload{
 		Project:   pj.Project,
 		Workspace: ws,
 	})
@@ -165,7 +165,7 @@ func (c *Controller) ApproveJob(project string, workspace string) error {
 		return err
 	}
 
-	err = c.executor.Apply(&terrafire.ExecutorPayload{
+	err = c.executor.Apply(&internal.ExecutorPayload{
 		Project:   pj.Project,
 		Workspace: ws,
 	})

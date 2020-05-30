@@ -1,4 +1,4 @@
-package terrafire
+package internal
 
 import (
 	"fmt"

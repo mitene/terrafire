@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"github.com/mitene/terrafire"
+	"github.com/mitene/terrafire/internal"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -12,11 +12,11 @@ type git struct {
 	dir string
 }
 
-func NewGit(dir string) terrafire.Git {
+func NewGit(dir string) internal.Git {
 	return &git{dir: dir}
 }
 
-func (g *git) Init(credentials map[string]*terrafire.GitCredential) (err error) {
+func (g *git) Init(credentials map[string]*internal.GitCredential) (err error) {
 	gitpath, err := exec.LookPath("git")
 	if err != nil {
 		return err

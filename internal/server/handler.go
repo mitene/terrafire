@@ -2,41 +2,41 @@ package server
 
 import (
 	"fmt"
-	"github.com/mitene/terrafire"
+	"github.com/mitene/terrafire/internal"
 )
 
 type Handler struct {
-	actions  chan *terrafire.Action
-	projects terrafire.ProjectRepository
-	config   *terrafire.Config
-	db       terrafire.DB
+	actions  chan *internal.Action
+	projects internal.ProjectRepository
+	config   *internal.Config
+	db       internal.DB
 }
 
-func NewHandler(config *terrafire.Config, db terrafire.DB) *Handler {
+func NewHandler(config *internal.Config, db internal.DB) *Handler {
 	return &Handler{
-		actions:  make(chan *terrafire.Action, 100),
-		projects: terrafire.ProjectRepository{},
+		actions:  make(chan *internal.Action, 100),
+		projects: internal.ProjectRepository{},
 		config:   config,
 		db:       db,
 	}
 }
 
 // Actions
-func (s *Handler) GetActions() chan *terrafire.Action {
+func (s *Handler) GetActions() chan *internal.Action {
 	return s.actions
 }
 
 // Projects
 
-func (s *Handler) GetProjects() map[string]*terrafire.Project {
-	ret := map[string]*terrafire.Project{}
+func (s *Handler) GetProjects() map[string]*internal.Project {
+	ret := map[string]*internal.Project{}
 	for name, pj := range s.projects {
 		ret[name] = pj.Project
 	}
 	return ret
 }
 
-func (s *Handler) GetProject(project string) (*terrafire.Project, error) {
+func (s *Handler) GetProject(project string) (*internal.Project, error) {
 	pj, err := s.projects.GetProject(project)
 	if err != nil {
 		return nil, err
@@ -44,29 +44,29 @@ func (s *Handler) GetProject(project string) (*terrafire.Project, error) {
 	return pj.Project, nil
 }
 
-func (s *Handler) UpdateProjectInfo(project string, info *terrafire.ProjectInfo) error {
+func (s *Handler) UpdateProjectInfo(project string, info *internal.ProjectInfo) error {
 	s.projects[project] = info
 	return nil
 }
 
 func (s *Handler) RefreshProject(project string) error {
-	s.actions <- &terrafire.Action{
-		Type:    terrafire.ActionTypeRefresh,
+	s.actions <- &internal.Action{
+		Type:    internal.ActionTypeRefresh,
 		Project: project,
 	}
 	return nil
 }
 
 func (s *Handler) RefreshAllProjects() error {
-	s.actions <- &terrafire.Action{
-		Type: terrafire.ActionTypeRefreshAll,
+	s.actions <- &internal.Action{
+		Type: internal.ActionTypeRefreshAll,
 	}
 	return nil
 }
 
 // Workspace
 
-func (s *Handler) GetWorkspaces(project string) (map[string]*terrafire.Workspace, error) {
+func (s *Handler) GetWorkspaces(project string) (map[string]*internal.Workspace, error) {
 	pj, err := s.projects.GetProject(project)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (s *Handler) GetWorkspaces(project string) (map[string]*terrafire.Workspace
 	return m.Workspaces, nil
 }
 
-func (s *Handler) GetWorkspaceInfo(project string, workspace string) (*terrafire.WorkspaceInfo, error) {
+func (s *Handler) GetWorkspaceInfo(project string, workspace string) (*internal.WorkspaceInfo, error) {
 	pj, ws, err := s.projects.GetWorkspace(project, workspace)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (s *Handler) GetWorkspaceInfo(project string, workspace string) (*terrafire
 		return nil, err
 	}
 
-	return &terrafire.WorkspaceInfo{
+	return &internal.WorkspaceInfo{
 		Project:   pj,
 		Workspace: ws,
 		LastJob:   job,
@@ -100,7 +100,7 @@ func (s *Handler) GetWorkspaceInfo(project string, workspace string) (*terrafire
 
 // Job
 
-func (s *Handler) SubmitJob(project string, workspace string) (job *terrafire.Job, err error) {
+func (s *Handler) SubmitJob(project string, workspace string) (job *internal.Job, err error) {
 	pj, ws, err := s.projects.GetWorkspace(project, workspace)
 	if err != nil {
 		return nil, err
@@ -111,13 +111,13 @@ func (s *Handler) SubmitJob(project string, workspace string) (job *terrafire.Jo
 		return nil, err
 	}
 
-	s.actions <- &terrafire.Action{
-		Type:      terrafire.ActionTypeSubmit,
+	s.actions <- &internal.Action{
+		Type:      internal.ActionTypeSubmit,
 		Project:   project,
 		Workspace: workspace,
 	}
 
-	return &terrafire.Job{
+	return &internal.Job{
 		Id: jobId,
 	}, nil
 }
@@ -128,8 +128,8 @@ func (s *Handler) ApproveJob(project string, workspace string) error {
 		return err
 	}
 
-	s.actions <- &terrafire.Action{
-		Type:      terrafire.ActionTypeApprove,
+	s.actions <- &internal.Action{
+		Type:      internal.ActionTypeApprove,
 		Project:   project,
 		Workspace: workspace,
 	}
@@ -137,11 +137,11 @@ func (s *Handler) ApproveJob(project string, workspace string) error {
 	return nil
 }
 
-func (s *Handler) GetJobs(project string, workspace string) ([]*terrafire.Job, error) {
+func (s *Handler) GetJobs(project string, workspace string) ([]*internal.Job, error) {
 	return s.db.GetJobs(project, workspace)
 }
 
-func (s *Handler) GetJob(jobId terrafire.JobId) (*terrafire.Job, error) {
+func (s *Handler) GetJob(jobId internal.JobId) (*internal.Job, error) {
 	return s.db.GetJobHistory(jobId)
 }
 

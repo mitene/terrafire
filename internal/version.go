@@ -1,4 +1,4 @@
-package terrafire
+package internal
 
 const version = "0.1"
 

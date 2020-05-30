@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/jinzhu/gorm"
-	"github.com/mitene/terrafire"
-	"github.com/mitene/terrafire/utils"
+	"github.com/mitene/terrafire/internal"
+	"github.com/mitene/terrafire/internal/utils"
 )
 
 type Job struct {
@@ -14,7 +14,7 @@ type Job struct {
 	Project   string `gorm:"index:idx_ws"`
 	Workspace string `gorm:"index:idx_ws"`
 
-	Status     terrafire.JobStatus
+	Status     internal.JobStatus
 	PlanResult string `gorm:"size:21844"`
 	Error      string
 
@@ -27,7 +27,7 @@ type Lock struct {
 	Workspace string `gorm:"primary_key"`
 }
 
-func (db *DB) CreateJob(project *terrafire.Project, workspace *terrafire.Workspace) (terrafire.JobId, error) {
+func (db *DB) CreateJob(project *internal.Project, workspace *internal.Workspace) (internal.JobId, error) {
 	if err := db.mustLock(project.Name, workspace.Name); err != nil {
 		return 0, err
 	}
@@ -35,7 +35,7 @@ func (db *DB) CreateJob(project *terrafire.Project, workspace *terrafire.Workspa
 	j := &Job{
 		Project:   project.Name,
 		Workspace: workspace.Name,
-		Status:    terrafire.JobStatusPending,
+		Status:    internal.JobStatusPending,
 	}
 
 	err := db.db.Create(j).Error
@@ -44,24 +44,24 @@ func (db *DB) CreateJob(project *terrafire.Project, workspace *terrafire.Workspa
 		return 0, err
 	}
 
-	return terrafire.JobId(j.ID), nil
+	return internal.JobId(j.ID), nil
 }
 
-func (db *DB) GetJobs(project string, workspace string) ([]*terrafire.Job, error) {
+func (db *DB) GetJobs(project string, workspace string) ([]*internal.Job, error) {
 	var out []*Job
 	err := db.db.Where("project = ? AND workspace = ?", project, workspace).Order("id desc").Find(&out).Error
 	if err != nil {
 		return nil, err
 	}
 
-	ret := make([]*terrafire.Job, len(out))
+	ret := make([]*internal.Job, len(out))
 	for i, j := range out {
 		ret[i] = formatJob(j)
 	}
 	return ret, nil
 }
 
-func (db *DB) GetJob(project string, workspace string) (*terrafire.Job, error) {
+func (db *DB) GetJob(project string, workspace string) (*internal.Job, error) {
 	j, err := db.getLastJob(project, workspace)
 	if err != nil {
 		return nil, err
@@ -110,7 +110,7 @@ func (db *DB) UpdateJobStatusPlanInProgress(project string, workspace string) er
 		return err
 	}
 
-	return db.db.Model(j).Update("status", terrafire.JobStatusPlanInProgress).Error
+	return db.db.Model(j).Update("status", internal.JobStatusPlanInProgress).Error
 }
 
 func (db *DB) UpdateJobStatusReviewRequired(project string, workspace string, result string) error {
@@ -120,7 +120,7 @@ func (db *DB) UpdateJobStatusReviewRequired(project string, workspace string, re
 	}
 
 	err = db.db.Model(j).Updates(map[string]interface{}{
-		"status":      terrafire.JobStatusReviewRequired,
+		"status":      internal.JobStatusReviewRequired,
 		"plan_result": result,
 	}).Error
 	if err != nil {
@@ -141,7 +141,7 @@ func (db *DB) UpdateJobStatusApplyPending(project string, workspace string) erro
 		return err
 	}
 
-	return db.db.Model(j).Update("status", terrafire.JobStatusApplyPending).Error
+	return db.db.Model(j).Update("status", internal.JobStatusApplyPending).Error
 }
 
 func (db *DB) UpdateJobStatusApplyInProgress(project string, workspace string) error {
@@ -150,7 +150,7 @@ func (db *DB) UpdateJobStatusApplyInProgress(project string, workspace string) e
 		return err
 	}
 
-	return db.db.Model(j).Update("status", terrafire.JobStatusApplyInProgress).Error
+	return db.db.Model(j).Update("status", internal.JobStatusApplyInProgress).Error
 }
 
 func (db *DB) UpdateJobStatusSucceeded(project string, workspace string) error {
@@ -161,7 +161,7 @@ func (db *DB) UpdateJobStatusSucceeded(project string, workspace string) error {
 		return err
 	}
 
-	err = db.db.Model(j).Update("status", terrafire.JobStatusSucceeded).Error
+	err = db.db.Model(j).Update("status", internal.JobStatusSucceeded).Error
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (db *DB) UpdateJobStatusPlanFailed(project string, workspace string, errorI
 	}
 
 	err = db.db.Model(j).Updates(map[string]interface{}{
-		"status": terrafire.JobStatusPlanFailed,
+		"status": internal.JobStatusPlanFailed,
 		"error":  errorInfo.Error(),
 	}).Error
 	if err != nil {
@@ -197,7 +197,7 @@ func (db *DB) UpdateJobStatusApplyFailed(project string, workspace string, error
 	}
 
 	err = db.db.Model(j).Updates(map[string]interface{}{
-		"status": terrafire.JobStatusApplyFailed,
+		"status": internal.JobStatusApplyFailed,
 		"error":  errorInfo.Error(),
 	}).Error
 	if err != nil {
@@ -225,7 +225,7 @@ func (db *DB) SaveApplyLog(project string, workspace string, log string) error {
 	return db.db.Model(j).Update("apply_log", log).Error
 }
 
-func (db *DB) GetJobHistory(jobId terrafire.JobId) (*terrafire.Job, error) {
+func (db *DB) GetJobHistory(jobId internal.JobId) (*internal.Job, error) {
 	out := &Job{Model: gorm.Model{ID: uint(jobId)}}
 	err := db.db.First(&out).Error
 	if err != nil {
@@ -250,9 +250,9 @@ func (db *DB) unlock(project string, workspace string) {
 	utils.LogError(db.db.Delete(&Lock{project, workspace}).Error)
 }
 
-func formatJob(job *Job) *terrafire.Job {
-	return &terrafire.Job{
-		Id:         terrafire.JobId(job.ID),
+func formatJob(job *Job) *internal.Job {
+	return &internal.Job{
+		Id:         internal.JobId(job.ID),
 		StartedAt:  job.CreatedAt,
 		Project:    job.Project,
 		Workspace:  job.Workspace,

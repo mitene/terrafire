@@ -1,13 +1,13 @@
-ALL := ./cmd/terrafire ./controller ./database ./executor ./server ./utils .
+ALL := ./cmd/terrafire ./internal/controller ./internal/database ./internal/executor ./internal/server ./internal/utils ./internal
 
 .PHONY: build
-build: ui
+build: web
 	go build -o dist/terrafire ./cmd/terrafire
 
-.PHONY: ui
-ui:
-	(cd ui && npm run build)
-	rice embed-go -i ./server
+.PHONY: web
+web:
+	(cd web && npm run build)
+	rice embed-go -i ./internal/server
 
 .PHONY: test
 test:

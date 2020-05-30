@@ -1,6 +1,6 @@
 before:
   hooks:
-    - make ui
+    - make web
 
 builds:
   - dir: cmd/terrafire

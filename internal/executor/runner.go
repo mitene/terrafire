@@ -3,8 +3,8 @@ package executor
 import (
 	"bytes"
 	"fmt"
-	"github.com/mitene/terrafire"
-	"github.com/mitene/terrafire/utils"
+	"github.com/mitene/terrafire/internal"
+	"github.com/mitene/terrafire/internal/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -12,18 +12,18 @@ import (
 )
 
 type Runner struct {
-	handler terrafire.Handler
-	blob    terrafire.Blob
+	handler internal.Handler
+	blob    internal.Blob
 }
 
-func NewRunner(handler terrafire.Handler, blob terrafire.Blob) *Runner {
+func NewRunner(handler internal.Handler, blob internal.Blob) *Runner {
 	return &Runner{
 		handler: handler,
 		blob:    blob,
 	}
 }
 
-func (r *Runner) Plan(payload *terrafire.ExecutorPayload) {
+func (r *Runner) Plan(payload *internal.ExecutorPayload) {
 	project, workspace := payload.Project.Name, payload.Workspace.Name
 
 	utils.LogError(r.handler.UpdateJobStatusPlanInProgress(project, workspace))
@@ -43,7 +43,7 @@ func (r *Runner) Plan(payload *terrafire.ExecutorPayload) {
 	utils.LogError(r.handler.UpdateJobStatusReviewRequired(project, workspace, result))
 }
 
-func (r *Runner) doPlan(payload *terrafire.ExecutorPayload, output io.Writer) (result string, err error) {
+func (r *Runner) doPlan(payload *internal.ExecutorPayload, output io.Writer) (result string, err error) {
 	pj, ws := payload.Project, payload.Workspace
 	project, workspace := pj.Name, ws.Name
 	envs := pj.Envs
@@ -101,7 +101,7 @@ func (r *Runner) doPlan(payload *terrafire.ExecutorPayload, output io.Writer) (r
 	return string(out), nil
 }
 
-func (r *Runner) Apply(payload *terrafire.ExecutorPayload) {
+func (r *Runner) Apply(payload *internal.ExecutorPayload) {
 	project, workspace := payload.Project.Name, payload.Workspace.Name
 
 	utils.LogError(r.handler.UpdateJobStatusApplyInProgress(project, workspace))
@@ -121,7 +121,7 @@ func (r *Runner) Apply(payload *terrafire.ExecutorPayload) {
 	utils.LogError(r.handler.UpdateJobStatusSucceeded(project, workspace))
 }
 
-func (r *Runner) doApply(payload *terrafire.ExecutorPayload, output io.Writer) (err error) {
+func (r *Runner) doApply(payload *internal.ExecutorPayload, output io.Writer) (err error) {
 	pj, ws := payload.Project, payload.Workspace
 	project, workspace := pj.Name, ws.Name
 	envs := pj.Envs
@@ -134,7 +134,7 @@ func (r *Runner) doApply(payload *terrafire.ExecutorPayload, output io.Writer) (
 	return r.run(dir, output, envs, "apply", "-no-color", "-input=false", "tfplan")
 }
 
-func (r *Runner) formatModuleAddr(workspace *terrafire.Workspace) (string, error) {
+func (r *Runner) formatModuleAddr(workspace *internal.Workspace) (string, error) {
 	switch src := workspace.Source; src.Type {
 	case "github":
 		if src.Owner == "" || src.Repo == "" {

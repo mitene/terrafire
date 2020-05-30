@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/mitene/terrafire"
-	"github.com/mitene/terrafire/controller"
-	"github.com/mitene/terrafire/database"
-	"github.com/mitene/terrafire/executor"
-	"github.com/mitene/terrafire/server"
-	"github.com/mitene/terrafire/utils"
+	"github.com/mitene/terrafire/internal"
+	"github.com/mitene/terrafire/internal/controller"
+	"github.com/mitene/terrafire/internal/database"
+	"github.com/mitene/terrafire/internal/executor"
+	"github.com/mitene/terrafire/internal/server"
+	"github.com/mitene/terrafire/internal/utils"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,7 +17,7 @@ func main() {
 }
 
 func runServer() error {
-	config, err := terrafire.GetConfig()
+	config, err := internal.GetConfig()
 	if err != nil {
 		return err
 	}
