@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+option go_package = "github.com/mitene/terrafire/internal/api";
+
+import "google/protobuf/timestamp.proto";
+
+message Project {
+    string name = 1;
+    repeated Workspace workspaces = 2;
+    string version = 3;
+    string repo = 4;
+    string branch = 5;
+    string path = 6;
+    repeated Pair envs = 7;
+    string error = 8;
+}
+
+message Workspace {
+    string Name = 1;
+    Source source = 2;
+    string workspace = 3;
+    repeated Pair vars = 4;
+    repeated string VarFiles = 5;
+}
+
+message Manifest {
+    repeated Workspace workspaces = 1;
+    string version = 2;
+}
+
+message Source {
+    enum Type {
+        github = 0;
+    }
+    Type type = 1;
+    string owner = 2;
+    string repo = 3;
+    string path = 4;
+    string Ref = 5;
+}
+
+message GitRepository {
+    string name = 1;
+    string protocol = 2;
+    string host = 3;
+    string user = 4;
+    string password = 5;
+}
+
+message Job {
+    uint64 id = 1;
+    google.protobuf.Timestamp started_at = 2;
+    string Project = 3;
+    string Workspace = 4;
+    enum Status {
+        Pending = 0;
+        PlanInProgress = 1;
+        ReviewRequired = 2;
+        ApplyPending = 3;
+        ApplyInProgress = 4;
+        Succeeded = 5;
+        PlanFailed = 6;
+        ApplyFailed = 7;
+    }
+    Status status = 5;
+    string plan_result = 6;
+    string error = 7;
+    string plan_log = 8;
+    string apply_log = 9;
+}
+
+enum Phase {
+    Plan = 0;
+    Apply = 1;
+}
+
+message Pair {
+    string key = 1;
+    string value = 2;
+}

@@ -1,182 +1,279 @@
 package server
 
 import (
+	"context"
 	"fmt"
-	"github.com/mitene/terrafire/internal"
+	"github.com/mitene/terrafire/internal/api"
+	"github.com/mitene/terrafire/internal/database"
+	"github.com/mitene/terrafire/internal/manifest"
+	"github.com/mitene/terrafire/internal/utils"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"path/filepath"
+	"sync"
 )
 
 type Handler struct {
-	actions  chan *internal.Action
-	projects internal.ProjectRepository
-	config   *internal.Config
-	db       internal.DB
+	actions        chan *api.GetActionResponse
+	actionControls chan *api.GetActionControlResponse
+	projects       map[string]*api.Project
+	workspaces     map[string]map[string]*api.Workspace
+	db             *database.DB
+	git            utils.Git
+
+	mux sync.Mutex
 }
 
-func NewHandler(config *internal.Config, db internal.DB) *Handler {
+func NewHandler(projects map[string]*api.Project, db *database.DB, git utils.Git) *Handler {
+	pjs := map[string]*api.Project{}
+	for name, pj := range projects {
+		pjs[name] = &(*pj) // copy project
+	}
+
 	return &Handler{
-		actions:  make(chan *internal.Action, 100),
-		projects: internal.ProjectRepository{},
-		config:   config,
-		db:       db,
+		actions:        make(chan *api.GetActionResponse, 100),
+		actionControls: make(chan *api.GetActionControlResponse, 100),
+		projects:       pjs,
+		workspaces:     map[string]map[string]*api.Workspace{},
+		db:             db,
+		git:            git,
+
+		mux: sync.Mutex{},
 	}
 }
 
-// Actions
-func (s *Handler) GetActions() chan *internal.Action {
-	return s.actions
-}
+/*
+Projects API
+*/
+func (h *Handler) RefreshProject(_ context.Context, req *api.RefreshProjectRequest) (*api.RefreshProjectResponse, error) {
+	project := req.GetProject()
 
-// Projects
+	log.WithFields(log.Fields{"project": project}).Info("refresh project")
 
-func (s *Handler) GetProjects() map[string]*internal.Project {
-	ret := map[string]*internal.Project{}
-	for name, pj := range s.projects {
-		ret[name] = pj.Project
+	pj, ok := h.projects[project]
+	if !ok {
+		return nil, fmt.Errorf("project is not defined: %s", project)
 	}
-	return ret
-}
 
-func (s *Handler) GetProject(project string) (*internal.Project, error) {
-	pj, err := s.projects.GetProject(project)
+	dir, err := utils.TempDir()
 	if err != nil {
 		return nil, err
 	}
-	return pj.Project, nil
-}
+	defer utils.TempClean(dir)
 
-func (s *Handler) UpdateProjectInfo(project string, info *internal.ProjectInfo) error {
-	s.projects[project] = info
-	return nil
-}
-
-func (s *Handler) RefreshProject(project string) error {
-	s.actions <- &internal.Action{
-		Type:    internal.ActionTypeRefresh,
-		Project: project,
-	}
-	return nil
-}
-
-func (s *Handler) RefreshAllProjects() error {
-	s.actions <- &internal.Action{
-		Type: internal.ActionTypeRefreshAll,
-	}
-	return nil
-}
-
-// Workspace
-
-func (s *Handler) GetWorkspaces(project string) (map[string]*internal.Workspace, error) {
-	pj, err := s.projects.GetProject(project)
+	commit, err := h.git.Fetch(dir, pj.Repo, pj.Branch)
 	if err != nil {
 		return nil, err
 	}
 
-	m := pj.Manifest
-	if m == nil {
-		return nil, fmt.Errorf("failed to load project manifest")
+	man, err := manifest.Load(filepath.Join(dir, pj.Path))
+	if err != nil {
+		pj.Error = err.Error()
+		return &api.RefreshProjectResponse{}, nil
 	}
 
-	return m.Workspaces, nil
+	h.mux.Lock()
+	defer h.mux.Unlock()
+
+	pj.Error = ""
+	pj.Version = commit
+	pj.Workspaces = man.Workspaces
+
+	h.workspaces[project] = map[string]*api.Workspace{}
+	for _, ws := range man.Workspaces {
+		h.workspaces[project][ws.Name] = ws
+	}
+
+	return &api.RefreshProjectResponse{}, nil
 }
 
-func (s *Handler) GetWorkspaceInfo(project string, workspace string) (*internal.WorkspaceInfo, error) {
-	pj, ws, err := s.projects.GetWorkspace(project, workspace)
-	if err != nil {
-		return nil, err
+func (h *Handler) ListProjects(_ context.Context, _ *api.ListProjectsRequest) (*api.ListProjectsResponse, error) {
+	projects := make([]*api.ListProjectsResponse_Project, 0, len(h.projects))
+	for _, pj := range h.projects {
+		projects = append(projects, &api.ListProjectsResponse_Project{
+			Name: pj.GetName(),
+		})
 	}
 
-	job, err := s.db.GetJob(project, workspace)
-	if err != nil {
-		return nil, err
-	}
-
-	return &internal.WorkspaceInfo{
-		Project:   pj,
-		Workspace: ws,
-		LastJob:   job,
+	return &api.ListProjectsResponse{
+		Projects: projects,
 	}, nil
 }
 
-// Job
+func (h *Handler) GetProject(_ context.Context, req *api.GetProjectRequest) (*api.GetProjectResponse, error) {
+	pj, ok := h.projects[req.GetProject()]
+	if !ok {
+		return nil, status.Errorf(codes.NotFound, "project %s not found", pj)
+	}
+	return &api.GetProjectResponse{
+		Project: pj,
+	}, nil
+}
 
-func (s *Handler) SubmitJob(project string, workspace string) (job *internal.Job, err error) {
-	pj, ws, err := s.projects.GetWorkspace(project, workspace)
+/*
+Jobs API
+*/
+func (h *Handler) SubmitJob(_ context.Context, req *api.SubmitJobRequest) (*api.SubmitJobResponse, error) {
+	project := req.GetProject()
+	workspace := req.GetWorkspace()
+
+	pj, ok := h.projects[project]
+	if !ok {
+		return nil, fmt.Errorf("project %s is not defined", project)
+	}
+
+	var ws *api.Workspace
+	if _, ok := h.workspaces[project]; ok {
+		if _, ok := h.workspaces[project][workspace]; ok {
+			ws = h.workspaces[project][workspace]
+		}
+	}
+	if ws == nil {
+		return nil, fmt.Errorf("workspace %s/%s is not defined", project, workspace)
+	}
+
+	_, err := h.db.CreateJob(pj, ws)
 	if err != nil {
 		return nil, err
 	}
 
-	jobId, err := s.db.CreateJob(pj.Project, ws)
-	if err != nil {
-		return nil, err
-	}
-
-	s.actions <- &internal.Action{
-		Type:      internal.ActionTypeSubmit,
+	h.actions <- &api.GetActionResponse{
+		Type:      api.GetActionResponse_SUBMIT,
 		Project:   project,
 		Workspace: workspace,
 	}
 
-	return &internal.Job{
-		Id: jobId,
-	}, nil
+	return &api.SubmitJobResponse{}, nil
 }
 
-func (s *Handler) ApproveJob(project string, workspace string) error {
-	err := s.UpdateJobStatusApplyPending(project, workspace)
+func (h *Handler) ApproveJob(_ context.Context, req *api.ApproveJobRequest) (*api.ApproveJobResponse, error) {
+	project := req.GetProject()
+	workspace := req.GetWorkspace()
+
+	err := h.db.UpdateJobStatusApplyPending(project, workspace)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	s.actions <- &internal.Action{
-		Type:      internal.ActionTypeApprove,
+	h.actions <- &api.GetActionResponse{
+		Type:      api.GetActionResponse_APPROVE,
 		Project:   project,
 		Workspace: workspace,
 	}
 
+	return &api.ApproveJobResponse{}, nil
+}
+
+func (h *Handler) GetJob(_ context.Context, req *api.GetJobRequest) (*api.GetJobResponse, error) {
+	job, err := h.db.GetJob(req.GetProject(), req.GetWorkspace())
+	if err != nil {
+		return nil, err
+	}
+	return &api.GetJobResponse{
+		Job: job,
+	}, nil
+}
+
+func (h *Handler) GetJobs(project string, workspace string) ([]*api.Job, error) {
+	return h.db.GetJobs(project, workspace)
+}
+
+func (h *Handler) GetJobHistory(jobId uint) (*api.Job, error) {
+	return h.db.GetJobHistory(jobId)
+}
+
+/*
+Scheduler API
+*/
+func (h *Handler) GetAction(ctx context.Context, req *api.GetActionRequest) (*api.GetActionResponse, error) {
+	select {
+	case a := <-h.actions:
+		return a, nil
+	case <-ctx.Done():
+		log.Info("connection closed")
+		return nil, status.Errorf(codes.Canceled, "connection closed")
+	}
+}
+
+func (h *Handler) GetActionControl(ctx context.Context, req *api.GetActionControlRequest) (*api.GetActionControlResponse, error) {
+	select {
+	case c := <-h.actionControls:
+		return c, nil
+	case <-ctx.Done():
+		log.Info("connection closed")
+		return nil, status.Errorf(codes.Canceled, "connection closed")
+	}
+}
+
+func (h *Handler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusRequest) (*api.UpdateJobStatusResponse, error) {
+	project := req.GetProject()
+	workspace := req.GetWorkspace()
+	var err error
+	switch req.GetStatus() {
+	case api.Job_Pending:
+		err = fmt.Errorf("unsupported job status: %s", req.GetStatus().String())
+	case api.Job_PlanInProgress:
+		err = h.db.UpdateJobStatusPlanInProgress(project, workspace)
+	case api.Job_ReviewRequired:
+		err = h.db.UpdateJobStatusReviewRequired(project, workspace, req.GetResult())
+	case api.Job_ApplyPending:
+		err = h.db.UpdateJobStatusApplyPending(project, workspace)
+	case api.Job_ApplyInProgress:
+		err = h.db.UpdateJobStatusApplyInProgress(project, workspace)
+	case api.Job_Succeeded:
+		err = h.db.UpdateJobStatusSucceeded(project, workspace)
+	case api.Job_PlanFailed:
+		err = h.db.UpdateJobStatusPlanFailed(project, workspace, req.GetError())
+	case api.Job_ApplyFailed:
+		err = h.db.UpdateJobStatusApplyFailed(project, workspace, req.GetError())
+	default:
+		err = fmt.Errorf("unknown job status: %s", req.GetStatus().String())
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &api.UpdateJobStatusResponse{}, nil
+}
+
+func (h *Handler) UpdateJobLog(_ context.Context, req *api.UpdateJobLogRequest) (*api.UpdateJobLogResponse, error) {
+	project := req.GetProject()
+	workspace := req.GetWorkspace()
+	jobLog := req.GetLog()
+
+	var err error
+	switch req.GetPhase() {
+	case api.Phase_Plan:
+		err = h.db.UpdateJobLogPlan(project, workspace, jobLog)
+	case api.Phase_Apply:
+		err = h.db.UpdateJobLogApply(project, workspace, jobLog)
+	default:
+		err = fmt.Errorf("invalid job phase: %s", req.GetPhase().String())
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &api.UpdateJobLogResponse{}, nil
+}
+
+/*
+Helper Functions
+*/
+
+func (h *Handler) refreshAllProject() error {
+	cnt := 0
+	for project := range h.projects {
+		_, err := h.RefreshProject(context.Background(), &api.RefreshProjectRequest{
+			Project: project,
+		})
+		if err != nil {
+			utils.LogError(err)
+			cnt += 1
+		}
+	}
+
+	if cnt > 0 {
+		return fmt.Errorf("faield to refresh %d projects", cnt)
+	}
 	return nil
-}
-
-func (s *Handler) GetJobs(project string, workspace string) ([]*internal.Job, error) {
-	return s.db.GetJobs(project, workspace)
-}
-
-func (s *Handler) GetJob(jobId internal.JobId) (*internal.Job, error) {
-	return s.db.GetJobHistory(jobId)
-}
-
-func (s *Handler) UpdateJobStatusPlanInProgress(project string, workspace string) error {
-	return s.db.UpdateJobStatusPlanInProgress(project, workspace)
-}
-
-func (s *Handler) UpdateJobStatusReviewRequired(project string, workspace string, result string) error {
-	return s.db.UpdateJobStatusReviewRequired(project, workspace, result)
-}
-
-func (s *Handler) UpdateJobStatusApplyPending(project string, workspace string) error {
-	return s.db.UpdateJobStatusApplyPending(project, workspace)
-}
-
-func (s *Handler) UpdateJobStatusApplyInProgress(project string, workspace string) error {
-	return s.db.UpdateJobStatusApplyInProgress(project, workspace)
-}
-
-func (s *Handler) UpdateJobStatusSucceeded(project string, workspace string) error {
-	return s.db.UpdateJobStatusSucceeded(project, workspace)
-}
-
-func (s *Handler) UpdateJobStatusPlanFailed(project string, workspace string, err error) error {
-	return s.db.UpdateJobStatusPlanFailed(project, workspace, err)
-}
-
-func (s *Handler) UpdateJobStatusApplyFailed(project string, workspace string, err error) error {
-	return s.db.UpdateJobStatusApplyFailed(project, workspace, err)
-}
-
-func (s *Handler) SavePlanLog(project string, workspace string, log string) error {
-	return s.db.SavePlanLog(project, workspace, log)
-}
-
-func (s *Handler) SaveApplyLog(project string, workspace string, log string) error {
-	return s.db.SaveApplyLog(project, workspace, log)
 }

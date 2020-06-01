@@ -13,3 +13,7 @@ func LogFatal(err error) {
 		log.Fatal(err)
 	}
 }
+
+func LogDefer(f func() error) {
+	LogError(f())
+}

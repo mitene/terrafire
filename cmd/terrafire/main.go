@@ -1,90 +1,115 @@
 package main
 
 import (
-	"github.com/mitene/terrafire/internal"
+	"fmt"
+	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/controller"
 	"github.com/mitene/terrafire/internal/database"
-	"github.com/mitene/terrafire/internal/executor"
+	"github.com/mitene/terrafire/internal/runner"
 	"github.com/mitene/terrafire/internal/server"
 	"github.com/mitene/terrafire/internal/utils"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
 func main() {
-	utils.LogFatal(runServer())
+	cmd := &cobra.Command{
+		Use: "terrafire [command]",
+	}
+
+	wrap := func(f func(*cobra.Command, []string) error) func(*cobra.Command, []string) {
+		return func(cmd *cobra.Command, args []string) {
+			utils.LogFatal(f(cmd, args))
+		}
+	}
+
+	cmd.AddCommand(
+		&cobra.Command{
+			Use: "server",
+			Run: wrap(startServer),
+		},
+
+		&cobra.Command{
+			Use: "controller",
+			Run: wrap(startController),
+		},
+
+		&cobra.Command{
+			Use: "run PHASE PROJECT WORKSPACE",
+			Run: wrap(startRunner),
+		},
+	)
+
+	utils.LogFatal(cmd.Execute())
 }
 
-func runServer() error {
-	config, err := internal.GetConfig()
+func startServer(_ *cobra.Command, _ []string) error {
+	config, err := GetSrvConfig()
 	if err != nil {
 		return err
 	}
 
-	tmp, err := newTempDir()
-	if err != nil {
-		return err
-	}
-	defer func() { utils.LogError(tmp.Delete()) }()
+	git := utils.NewGit(config.Repos)
 
-	gitDir, err := tmp.Create("git")
-	if err != nil {
-		return err
-	}
-	git := utils.NewGit(gitDir)
-	err = git.Init(config.Repos)
+	db, err := database.NewDB(config.DbDriver, config.DbAddress)
 	if err != nil {
 		return err
 	}
 
-	db, err := database.NewDB(config)
-	if err != nil {
-		return err
-	}
+	handler := server.NewHandler(config.Projects, db, git)
+	srv := server.NewServer(handler)
+	sch := server.NewScheduler(handler)
 
-	handler := server.NewHandler(config, db)
-	srv := server.NewServer(config, handler)
+	go func() { utils.LogError(sch.Start(fmt.Sprintf(":%d", config.SchedulerPort))) }()
+	defer sch.Stop()
 
-	blob := executor.NewLocalBlob(filepath.Join(config.DataDir, "blob"))
-	runner := executor.NewRunner(handler, blob)
-	exe := executor.NewLocalExecutor(handler, runner, config.NumWorkers)
-
-	ctrlDir, err := tmp.Create("controller")
-	if err != nil {
-		return err
-	}
-	ctrl := controller.New(config, handler, exe, git, ctrlDir)
-
-	go func() { utils.LogError(ctrl.Start()) }()
-	defer func() { utils.LogError(ctrl.Stop()) }()
-
-	utils.LogError(handler.RefreshAllProjects())
-
-	return srv.Start()
+	return srv.Start(fmt.Sprintf(":%d", config.ServerPort))
 }
 
-type tempDir struct {
-	root string
-}
-
-func newTempDir() (*tempDir, error) {
-	dir, err := ioutil.TempDir("", "terrafire-")
+func startController(_ *cobra.Command, _ []string) error {
+	config, err := GetCtrlConfig()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return &tempDir{root: dir}, nil
-}
 
-func (d *tempDir) Create(name string) (string, error) {
-	p := filepath.Join(d.root, name)
-	err := os.MkdirAll(p, 0755)
+	conn, err := grpc.Dial(config.SchedulerAddress, grpc.WithInsecure())
 	if err != nil {
-		return "", err
+		return err
 	}
-	return p, nil
+	client := api.NewSchedulerClient(conn)
+
+	ctrl := controller.New(client, config.Executor, config.Concurrency)
+
+	return ctrl.Start()
 }
 
-func (d *tempDir) Delete() error {
-	return os.RemoveAll(d.root)
+func startRunner(_ *cobra.Command, args []string) error {
+	config, err := GetRunnerConfig()
+	if err != nil {
+		return err
+	}
+
+	phase := args[0]
+	project := args[1]
+	workspace := args[2]
+
+	conn, err := grpc.Dial(config.SchedulerAddress, grpc.WithInsecure())
+	if err != nil {
+		return err
+	}
+	client := api.NewSchedulerClient(conn)
+
+	tf := runner.NewTerraform()
+	git := utils.NewGit(config.Repos)
+
+	runner_ := runner.NewRunner(config.Projects, client, git, tf, config.Blob)
+
+	switch phase {
+	case "plan":
+		return runner_.Plan(project, workspace)
+	case "apply":
+		return runner_.Apply(project, workspace)
+	default:
+		return fmt.Errorf("invalid command: %s", phase)
+	}
 }
