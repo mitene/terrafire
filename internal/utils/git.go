@@ -1,61 +1,22 @@
 package utils
 
 import (
-	"github.com/mitene/terrafire/internal"
-	"io/ioutil"
+	"github.com/mitene/terrafire/internal/api"
 	"os"
 	"os/exec"
 	"path/filepath"
 )
 
+type Git interface {
+	Fetch(dir string, repo string, branch string) (string, error)
+}
+
 type git struct {
-	dir string
+	repos map[string]*api.GitRepository
 }
 
-func NewGit(dir string) internal.Git {
-	return &git{dir: dir}
-}
-
-func (g *git) Init(credentials map[string]*internal.GitCredential) (err error) {
-	gitpath, err := exec.LookPath("git")
-	if err != nil {
-		return err
-	}
-
-	// save credentials
-	credfile := filepath.Join(g.dir, "credentials")
-	creds := ""
-	for _, c := range credentials {
-		proto, host := c.Protocol, c.Host
-		if c.User != "" || c.Password != "" {
-			host = c.User + ":" + c.Password + "@" + host
-		}
-		creds += proto + "://" + host + "\n"
-	}
-
-	err = ioutil.WriteFile(credfile, []byte(creds), 0400)
-	if err != nil {
-		return err
-	}
-
-	// create git alias command
-	bindir := filepath.Join(g.dir, "bin")
-	err = os.Mkdir(bindir, 0755)
-	if err != nil {
-		return err
-	}
-
-	err = ioutil.WriteFile(filepath.Join(bindir, "git"), []byte(
-		"#!/bin/sh\n"+
-			"exec "+gitpath+
-			" -c credential.helper=\"store --file "+credfile+"\""+
-			" -c core.askpass=echo"+ // disable askpass
-			" \"$@\""), 0755)
-	if err != nil {
-		return err
-	}
-
-	return os.Setenv("PATH", bindir+string(os.PathListSeparator)+os.Getenv("PATH"))
+func NewGit(repos map[string]*api.GitRepository) Git {
+	return &git{repos: repos}
 }
 
 func (g *git) Fetch(dir string, repo string, branch string) (string, error) {
@@ -76,19 +37,74 @@ func (g *git) Fetch(dir string, repo string, branch string) (string, error) {
 		}
 	}
 
-	cmd := exec.Command("git", "rev-parse", "HEAD")
-	cmd.Dir = dir
-	rev, err := cmd.Output()
+	rev, err := g.output(dir, "rev-parse", "HEAD")
 	if err != nil {
 		return "", err
 	}
 	return string(rev), nil
 }
 
-func (g *git) run(dir string, arg ...string) error {
-	cmd := exec.Command("git", arg...)
-	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+func (g *git) run(dir string, arg ...string) (err error) {
+	err1 := g.withCredentials(func(credArgs []string) {
+		cmd := exec.Command("git", append(credArgs, arg...)...)
+		cmd.Dir = dir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+	})
+	if err1 != nil {
+		return err1
+	}
+
+	return
+}
+
+func (g *git) output(dir string, arg ...string) (out []byte, err error) {
+	err1 := g.withCredentials(func(credArgs []string) {
+		cmd := exec.Command("git", append(credArgs, arg...)...)
+		cmd.Dir = dir
+		out, err = cmd.Output()
+	})
+	if err1 != nil {
+		return nil, err1
+	}
+
+	return
+}
+
+func (g *git) withCredentials(f func(credArgs []string)) error {
+	credfile, err := TempFile()
+	if err != nil {
+		return err
+	}
+	defer LogDefer(func() error { return os.Remove(credfile.Name()) })
+
+	err = credfile.Chmod(0400)
+	if err != nil {
+		return err
+	}
+
+	for _, c := range g.repos {
+		proto, host := c.Protocol, c.Host
+		if c.User != "" || c.Password != "" {
+			host = c.User + ":" + c.Password + "@" + host
+		}
+
+		_, err = credfile.WriteString(proto + "://" + host + "\n")
+		if err != nil {
+			return err
+		}
+	}
+
+	err = credfile.Close()
+	if err != nil {
+		return err
+	}
+
+	f([]string{
+		"-c", "credential.helper=store --file " + credfile.Name(),
+		"-c", "core.askpass=echo", // disable askpass
+	})
+
+	return nil
 }

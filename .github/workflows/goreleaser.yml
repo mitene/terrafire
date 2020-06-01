@@ -21,38 +21,16 @@ jobs:
         with:
           go-version: 1.14
       -
-        name: Set up Go envs
-        run: |
-          echo "::set-env name=GOPATH::$(go env GOPATH)"
-          echo "::add-path::$(go env GOPATH)/bin"
-      -
-        name: Cache go modules
-        uses: actions/cache@v1
-        with:
-          path: ${{ env.GOPATH }}/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-      -
         name: Set up Node
         uses: actions/setup-node@v1
         with:
           node-version: 13.x
       -
-        name: Cache node modules
-        uses: actions/cache@v1
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-      -
         name: Install dependencies
         run: |
-          (cd ui && npm ci)
+          (cd web && npm ci)
           go get github.com/GeertJohan/go.rice/rice
+          echo "::add-path::$(go env GOPATH)/bin"
       -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v1

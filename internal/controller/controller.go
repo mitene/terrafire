@@ -1,178 +1,179 @@
 package controller
 
 import (
+	"context"
 	"fmt"
-	"github.com/mitene/terrafire/internal"
-	"github.com/mitene/terrafire/internal/utils"
+	"github.com/mitene/terrafire/internal/api"
 	log "github.com/sirupsen/logrus"
-	"os"
-	"path/filepath"
 	"sync"
+	"time"
 )
 
 type Controller struct {
-	config   *internal.Config
-	handler  internal.Handler
-	executor internal.Executor
-	git      internal.Git
+	client      api.SchedulerClient
+	executor    Executor
+	concurrency int
 
-	projects internal.ProjectRepository
-	done     chan interface{}
-	mux      sync.Mutex
-	dir      string
+	ps      map[key]Process
+	stopped chan struct{}
+	logger  *log.Entry
 }
 
-func New(config *internal.Config, handler internal.Handler, executor internal.Executor, git internal.Git, dir string) *Controller {
-	return &Controller{
-		config:   config,
-		handler:  handler,
-		executor: executor,
-		git:      git,
-		dir:      dir,
+type key struct {
+	project   string
+	workspace string
+}
 
-		projects: internal.ProjectRepository{},
-		done:     make(chan interface{}),
-		mux:      sync.Mutex{},
+func New(client api.SchedulerClient, executor Executor, concurrency int) *Controller {
+	return &Controller{
+		client:      client,
+		executor:    executor,
+		concurrency: concurrency,
+
+		ps:      map[key]Process{},
+		stopped: make(chan struct{}),
+		logger:  log.WithField("name", "controller"),
 	}
 }
 
 func (c *Controller) Start() error {
-	ch := c.handler.GetActions()
+	var wg sync.WaitGroup
+
+	for i := 0; i < c.concurrency; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			c.startWorker("worker", c.handleAction)
+		}(i)
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.startWorker("control worker", c.handleActionControl)
+	}()
+
+	wg.Wait()
+	return nil
+}
+
+func (c *Controller) startWorker(name string, handler func(context.Context) (func() error, error)) {
+	c.logger.Infof("start %s", name)
 	for {
+		ctx, cancel := context.WithCancel(context.Background())
+		ch := make(chan func() error)
+
+		go func() {
+			f, err := handler(ctx)
+			if err != nil {
+				ch <- func() error {
+					time.Sleep(3 * time.Second)
+					return err
+				}
+			} else {
+				ch <- f
+			}
+		}()
+
 		select {
-		case action := <-ch:
-			{
-				var err error
-
-				switch action.Type {
-				case internal.ActionTypeRefresh:
-					err = c.RefreshProject(action.Project)
-				case internal.ActionTypeRefreshAll:
-					err = c.RefreshAllProjects()
-				case internal.ActionTypeSubmit:
-					err = c.SubmitJob(action.Project, action.Workspace)
-				case internal.ActionTypeApprove:
-					err = c.ApproveJob(action.Project, action.Workspace)
-				default:
-					err = fmt.Errorf("invalid aciton type: %d", action.Type)
-				}
-
-				utils.LogError(err)
+		case f := <-ch:
+			err := f()
+			if err != nil {
+				c.logger.Error(err)
 			}
-		case _, ok := <-c.done:
-			{
-				if !ok {
-					log.Error("controller stopped")
-					return nil
-				}
-			}
+			continue
+
+		case <-c.stopped:
+			cancel()
+			return
 		}
 	}
 }
 
 func (c *Controller) Stop() error {
 	log.Info("controller is stopping")
-	close(c.done)
+	close(c.stopped)
 	return nil
 }
 
-func (c *Controller) RefreshAllProjects() error {
-	errCount := 0
-	for project := range c.config.Projects {
-		err := c.RefreshProject(project)
-		if err != nil {
-			utils.LogError(err)
-			errCount += 1
-		}
+func (c *Controller) handleAction(ctx context.Context) (func() error, error) {
+	action, err := c.client.GetAction(ctx, &api.GetActionRequest{})
+	if err != nil {
+		return nil, err
 	}
 
-	if errCount > 0 {
-		return fmt.Errorf("failed to refresh %d projects", errCount)
-	}
-	return nil
+	return func() error {
+		switch action.Type {
+		case api.GetActionResponse_NONE:
+			return nil
+		case api.GetActionResponse_SUBMIT:
+			return c.SubmitJob(action.GetProject(), action.GetWorkspace())
+		case api.GetActionResponse_APPROVE:
+			return c.ApproveJob(action.GetProject(), action.GetWorkspace())
+		default:
+			return fmt.Errorf("invalid aciton type: %d", action.Type)
+		}
+	}, nil
 }
 
-func (c *Controller) RefreshProject(project string) (err error) {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-
-	log.WithField("project", project).Info("start refresh")
-
-	if _, ok := c.projects[project]; !ok {
-		c.projects[project] = &internal.ProjectInfo{}
-	}
-	info, _ := c.projects[project]
-
-	func() {
-		var ok bool
-
-		dir := filepath.Join(c.dir, "project", project)
-		err = os.MkdirAll(dir, 0755)
-		if err != nil {
-			return
-		}
-
-		info.Project, ok = c.config.Projects[project]
-		if !ok {
-			err = fmt.Errorf("project is not defined: %s", project)
-			return
-		}
-
-		info.Commit, err = c.git.Fetch(dir, info.Project.Repo, info.Project.Branch)
-		if err != nil {
-			return
-		}
-
-		info.Manifest, err = LoadManifest(filepath.Join(dir, info.Project.Path))
-		if err != nil {
-			return
-		}
-	}()
+func (c *Controller) handleActionControl(ctx context.Context) (func() error, error) {
+	action, err := c.client.GetActionControl(ctx, &api.GetActionControlRequest{})
 	if err != nil {
-		utils.LogError(err)
-		info.Error = err.Error()
+		return nil, err
 	}
 
-	err = c.handler.UpdateProjectInfo(project, info)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return func() error {
+		switch action.Type {
+		case api.GetActionControlResponse_NONE:
+			return nil
+		case api.GetActionControlResponse_CANCEL:
+			return c.CancelJob(action.GetProject(), action.GetWorkspace())
+		default:
+			return fmt.Errorf("invalid aciton type: %d", action.Type)
+		}
+	}, nil
 }
 
 func (c *Controller) SubmitJob(project string, workspace string) error {
-	pj, ws, err := c.projects.GetWorkspace(project, workspace)
+	p, err := c.executor.Plan(project, workspace)
 	if err != nil {
-		return err
+		return c.wrapError("plan", err)
 	}
 
-	err = c.executor.Plan(&internal.ExecutorPayload{
-		Project:   pj.Project,
-		Workspace: ws,
-	})
-	if err != nil {
-		utils.LogError(c.handler.UpdateJobStatusPlanFailed(project, workspace, err))
-		return err
-	}
+	k := key{project: project, workspace: workspace}
+	c.ps[k] = p
+	defer delete(c.ps, k)
 
-	return nil
+	return c.wrapError("plan", p.wait())
 }
 
 func (c *Controller) ApproveJob(project string, workspace string) error {
-	pj, ws, err := c.projects.GetWorkspace(project, workspace)
+	p, err := c.executor.Apply(project, workspace)
 	if err != nil {
-		return err
+		return c.wrapError("apply", err)
 	}
 
-	err = c.executor.Apply(&internal.ExecutorPayload{
-		Project:   pj.Project,
-		Workspace: ws,
-	})
-	if err != nil {
-		utils.LogError(c.handler.UpdateJobStatusApplyFailed(project, workspace, err))
-		return err
+	k := key{project: project, workspace: workspace}
+	c.ps[k] = p
+	defer delete(c.ps, k)
+
+	return c.wrapError("apply", p.wait())
+}
+
+func (c *Controller) CancelJob(project string, workspace string) error {
+	k := key{project: project, workspace: workspace}
+
+	p, ok := c.ps[k]
+	if !ok {
+		return fmt.Errorf("no job running in %s/%s", project, workspace)
 	}
 
+	return p.cancel()
+}
+
+func (*Controller) wrapError(phase string, err error) error {
+	if err != nil {
+		return fmt.Errorf("terrafire runner %s failed: %w", phase, err)
+	}
 	return nil
 }
