@@ -33,8 +33,8 @@ func (t *TerraformImpl) Plan(option TerraformOption, workspace string, vars []st
 		return nil, fmt.Errorf("terraform init failed: %w", err)
 	}
 
-	_, _ = fmt.Fprintln(option.out, "\n---- workspace select/new ----------------------------------------------")
 	if workspace != "" {
+		_, _ = fmt.Fprintln(option.out, "\n---- workspace select/new ----------------------------------------------")
 		err = t.newCmd(option, "workspace", "select", "-no-color", workspace).Run()
 		if err != nil {
 			err = t.newCmd(option, "workspace", "new", "-no-color", workspace).Run()

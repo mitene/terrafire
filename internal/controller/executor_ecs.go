@@ -49,7 +49,7 @@ func (r *ExecutorEcs) run(phase string, project string, workspace string) (Proce
 			ContainerOverrides: []*ecs.ContainerOverride{
 				{
 					Name:    aws.String(r.config.ContainerName),
-					Command: aws.StringSlice([]string{phase, project, workspace}),
+					Command: aws.StringSlice([]string{"run", phase, project, workspace}),
 				},
 			},
 		},

@@ -180,7 +180,7 @@ func (e Envs) GetSlice(key string, default_ string) []string {
 	if v == "" {
 		return nil
 	} else {
-		return strings.Split(",", v)
+		return strings.Split(v, ",")
 	}
 }
 
