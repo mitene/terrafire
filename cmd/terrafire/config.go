@@ -86,7 +86,7 @@ func GetCtrlConfig() (config *ctrlConfig, err error) {
 			return nil, fmt.Errorf("ecs task definiton is not defined")
 		}
 
-		config.Executor = controller.NewEcsExecutor(nil)
+		config.Executor = controller.NewEcsExecutor(cfg)
 	default:
 		return nil, fmt.Errorf("invalid executor type: %s", t)
 	}
