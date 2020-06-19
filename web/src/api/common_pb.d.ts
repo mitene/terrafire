@@ -8,14 +8,6 @@ export class Project extends jspb.Message {
   getName(): string;
   setName(value: string): void;
 
-  clearWorkspacesList(): void;
-  getWorkspacesList(): Array<Workspace>;
-  setWorkspacesList(value: Array<Workspace>): void;
-  addWorkspaces(value?: Workspace, index?: number): Workspace;
-
-  getVersion(): string;
-  setVersion(value: string): void;
-
   getRepo(): string;
   setRepo(value: string): void;
 
@@ -30,9 +22,6 @@ export class Project extends jspb.Message {
   setEnvsList(value: Array<Pair>): void;
   addEnvs(value?: Pair, index?: number): Pair;
 
-  getError(): string;
-  setError(value: string): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): Project.AsObject;
   static toObject(includeInstance: boolean, msg: Project): Project.AsObject;
@@ -46,13 +35,10 @@ export class Project extends jspb.Message {
 export namespace Project {
   export type AsObject = {
     name: string,
-    workspacesList: Array<Workspace.AsObject>,
-    version: string,
     repo: string,
     branch: string,
     path: string,
     envsList: Array<Pair.AsObject>,
-    error: string,
   }
 }
 
@@ -73,10 +59,10 @@ export class Workspace extends jspb.Message {
   setVarsList(value: Array<Pair>): void;
   addVars(value?: Pair, index?: number): Pair;
 
-  clearVarfilesList(): void;
-  getVarfilesList(): Array<string>;
-  setVarfilesList(value: Array<string>): void;
-  addVarfiles(value: string, index?: number): string;
+  clearVarFilesList(): void;
+  getVarFilesList(): Array<Pair>;
+  setVarFilesList(value: Array<Pair>): void;
+  addVarFiles(value?: Pair, index?: number): Pair;
 
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): Workspace.AsObject;
@@ -94,33 +80,7 @@ export namespace Workspace {
     source?: Source.AsObject,
     workspace: string,
     varsList: Array<Pair.AsObject>,
-    varfilesList: Array<string>,
-  }
-}
-
-export class Manifest extends jspb.Message {
-  clearWorkspacesList(): void;
-  getWorkspacesList(): Array<Workspace>;
-  setWorkspacesList(value: Array<Workspace>): void;
-  addWorkspaces(value?: Workspace, index?: number): Workspace;
-
-  getVersion(): string;
-  setVersion(value: string): void;
-
-  serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): Manifest.AsObject;
-  static toObject(includeInstance: boolean, msg: Manifest): Manifest.AsObject;
-  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
-  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: Manifest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): Manifest;
-  static deserializeBinaryFromReader(message: Manifest, reader: jspb.BinaryReader): Manifest;
-}
-
-export namespace Manifest {
-  export type AsObject = {
-    workspacesList: Array<Workspace.AsObject>,
-    version: string,
+    varFilesList: Array<Pair.AsObject>,
   }
 }
 
@@ -214,8 +174,10 @@ export class Job extends jspb.Message {
   getProject(): string;
   setProject(value: string): void;
 
-  getWorkspace(): string;
-  setWorkspace(value: string): void;
+  hasWorkspace(): boolean;
+  clearWorkspace(): void;
+  getWorkspace(): Workspace | undefined;
+  setWorkspace(value?: Workspace): void;
 
   getStatus(): Job.StatusMap[keyof Job.StatusMap];
   setStatus(value: Job.StatusMap[keyof Job.StatusMap]): void;
@@ -232,6 +194,15 @@ export class Job extends jspb.Message {
   getApplyLog(): string;
   setApplyLog(value: string): void;
 
+  getProjectVersion(): string;
+  setProjectVersion(value: string): void;
+
+  getWorkspaceVersion(): string;
+  setWorkspaceVersion(value: string): void;
+
+  getDestroy(): boolean;
+  setDestroy(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): Job.AsObject;
   static toObject(includeInstance: boolean, msg: Job): Job.AsObject;
@@ -247,12 +218,15 @@ export namespace Job {
     id: number,
     startedAt?: google_protobuf_timestamp_pb.Timestamp.AsObject,
     project: string,
-    workspace: string,
+    workspace?: Workspace.AsObject,
     status: Job.StatusMap[keyof Job.StatusMap],
     planResult: string,
     error: string,
     planLog: string,
     applyLog: string,
+    projectVersion: string,
+    workspaceVersion: string,
+    destroy: boolean,
   }
 
   export interface StatusMap {

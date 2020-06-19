@@ -22,13 +22,13 @@ type WebRefreshProject = {
   readonly responseType: typeof web_pb.RefreshProjectResponse;
 };
 
-type WebGetProject = {
+type WebListWorkspaces = {
   readonly methodName: string;
   readonly service: typeof Web;
   readonly requestStream: false;
   readonly responseStream: false;
-  readonly requestType: typeof web_pb.GetProjectRequest;
-  readonly responseType: typeof web_pb.GetProjectResponse;
+  readonly requestType: typeof web_pb.ListWorkspacesRequest;
+  readonly responseType: typeof web_pb.ListWorkspacesResponse;
 };
 
 type WebGetJob = {
@@ -62,7 +62,7 @@ export class Web {
   static readonly serviceName: string;
   static readonly ListProjects: WebListProjects;
   static readonly RefreshProject: WebRefreshProject;
-  static readonly GetProject: WebGetProject;
+  static readonly ListWorkspaces: WebListWorkspaces;
   static readonly GetJob: WebGetJob;
   static readonly SubmitJob: WebSubmitJob;
   static readonly ApproveJob: WebApproveJob;
@@ -118,14 +118,14 @@ export class WebClient {
     requestMessage: web_pb.RefreshProjectRequest,
     callback: (error: ServiceError|null, responseMessage: web_pb.RefreshProjectResponse|null) => void
   ): UnaryResponse;
-  getProject(
-    requestMessage: web_pb.GetProjectRequest,
+  listWorkspaces(
+    requestMessage: web_pb.ListWorkspacesRequest,
     metadata: grpc.Metadata,
-    callback: (error: ServiceError|null, responseMessage: web_pb.GetProjectResponse|null) => void
+    callback: (error: ServiceError|null, responseMessage: web_pb.ListWorkspacesResponse|null) => void
   ): UnaryResponse;
-  getProject(
-    requestMessage: web_pb.GetProjectRequest,
-    callback: (error: ServiceError|null, responseMessage: web_pb.GetProjectResponse|null) => void
+  listWorkspaces(
+    requestMessage: web_pb.ListWorkspacesRequest,
+    callback: (error: ServiceError|null, responseMessage: web_pb.ListWorkspacesResponse|null) => void
   ): UnaryResponse;
   getJob(
     requestMessage: web_pb.GetJobRequest,

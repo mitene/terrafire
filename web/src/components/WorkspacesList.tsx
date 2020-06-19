@@ -7,28 +7,31 @@ import * as globalStyle from "./styles"
 import CardActionArea from "@material-ui/core/CardActionArea";
 import {CardContent} from "@material-ui/core";
 import Card from "@material-ui/core/Card";
-import {Project} from "../api/common_pb"
+import {listWorkspaces} from "../api";
+import {useAsync} from "../hooks";
 
 type Props = {
-    project: Project
+    project: string
+    ts: number
 }
 
 export const WorkspacesList: React.FC<Props> = (props) => {
+    const project = props.project;
+
     const classes = globalStyle.useStyles();
-    const pj = props.project;
-    const wss = props.project.getWorkspacesList()
+    const wss = useWorkspaces(project, props.ts);
 
     return (
         <Container maxWidth="lg" className={classes.container}>
             <Grid container spacing={1}>
                 {wss.map(ws => {
                     return (
-                        <Grid item xs={12} key={ws.getName()}>
+                        <Grid item xs={12} key={ws}>
                             <Card>
                                 <CardActionArea component={RouterLink}
-                                                to={`/projects/${pj.getName()}/workspaces/${ws.getName()}`}>
+                                                to={`/projects/${project}/workspaces/${ws}`}>
                                     <CardContent>
-                                        <Title>{ws.getName()}</Title>
+                                        <Title>{ws}</Title>
                                     </CardContent>
                                 </CardActionArea>
                             </Card>
@@ -38,4 +41,13 @@ export const WorkspacesList: React.FC<Props> = (props) => {
             </Grid>
         </Container>
     );
+}
+
+/**
+ * Hooks
+ */
+
+function useWorkspaces(project: string, ts: number): string[] {
+    const [wss,] = useAsync(() => listWorkspaces(project), [project, ts]);
+    return wss || [];
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/controller"
-	"github.com/mitene/terrafire/internal/database"
 	"github.com/mitene/terrafire/internal/runner"
 	"github.com/mitene/terrafire/internal/server"
 	"github.com/mitene/terrafire/internal/utils"
@@ -51,19 +50,16 @@ func startServer(_ *cobra.Command, _ []string) error {
 
 	git := utils.NewGit(config.Repos)
 
-	db, err := database.NewDB(config.DbDriver, config.DbAddress)
+	db, err := server.NewDB(config.DbDriver, config.DbAddress)
 	if err != nil {
 		return err
 	}
 
-	handler := server.NewHandler(config.Projects, db, git)
-	srv := server.NewServer(handler)
-	sch := server.NewScheduler(handler)
+	srv := server.New(config.Projects, db, git)
 
-	go func() { utils.LogError(sch.Start(fmt.Sprintf(":%d", config.SchedulerPort))) }()
-	defer sch.Stop()
+	go func() { utils.LogError(srv.StartScheduler(fmt.Sprintf(":%d", config.SchedulerPort))) }()
 
-	return srv.Start(fmt.Sprintf(":%d", config.ServerPort))
+	return srv.StartWeb(fmt.Sprintf(":%d", config.ServerPort))
 }
 
 func startController(_ *cobra.Command, _ []string) error {

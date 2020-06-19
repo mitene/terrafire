@@ -2,9 +2,10 @@ package utils
 
 import (
 	"github.com/mitene/terrafire/internal/api"
+	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
 )
 
 type Git interface {
@@ -19,29 +20,44 @@ func NewGit(repos map[string]*api.GitRepository) Git {
 	return &git{repos: repos}
 }
 
-func (g *git) Fetch(dir string, repo string, branch string) (string, error) {
-	if _, err := os.Stat(filepath.Join(dir, ".git")); err == nil {
-		err := g.run(dir, "fetch", "origin", branch, "--depth=1")
+func (g *git) Fetch(dir string, repo string, ref string) (string, error) {
+	// clean target directory
+	fs, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range fs {
+		err = os.RemoveAll(f.Name())
 		if err != nil {
 			return "", err
 		}
+	}
 
-		err = g.run(dir, "reset", "--hard", "origin/"+branch)
-		if err != nil {
-			return "", err
-		}
-	} else {
-		err = g.run(dir, "clone", repo, ".", "--depth=1", "--branch="+branch, "--single-branch")
-		if err != nil {
-			return "", err
-		}
+	err = g.run(dir, "init", ".")
+	if err != nil {
+		return "", err
+	}
+
+	err = g.run(dir, "remote", "add", "origin", repo)
+	if err != nil {
+		return "", err
+	}
+
+	err = g.run(dir, "fetch", "origin", ref, "--depth=1")
+	if err != nil {
+		return "", err
+	}
+
+	err = g.run(dir, "checkout", ref)
+	if err != nil {
+		return "", err
 	}
 
 	rev, err := g.output(dir, "rev-parse", "HEAD")
 	if err != nil {
 		return "", err
 	}
-	return string(rev), nil
+	return strings.TrimSpace(string(rev)), nil
 }
 
 func (g *git) run(dir string, arg ...string) (err error) {

@@ -4,30 +4,32 @@ import Paper from "@material-ui/core/Paper";
 import Title from "./Title";
 import Typography from "@material-ui/core/Typography";
 import Button from "@material-ui/core/Button";
-import React, {useEffect, useState} from "react";
+import React, {useEffect} from "react";
 
 import * as globalStyle from "./styles";
-import {approveJob, getJob, submitJob} from "../api";
-import {Job, Project} from "../api/common_pb";
+import {approveJob, getJob, listWorkspaces, submitJob} from "../api";
+import {Job} from "../api/common_pb";
+import {Redirect} from "react-router";
+import {useAsync} from "../hooks";
 
 type Props = {
-    project: Project
+    project: string
     workspace: string
+    ts: number
 }
 
 export const WorkspaceDetail: React.FC<Props> = (props) => {
-    const project = props.project.getName();
+    const project = props.project;
     const workspace = props.workspace;
-    console.log([project, workspace]);
 
     const classes = globalStyle.useStyles();
+    const wsExists = useWorkspaceExists(project, workspace, props.ts);
     const [j, reload] = useJob(project, workspace);
 
-    const pj = props.project;
-    const ws = pj.getWorkspacesList()?.find(e => e.getName() === workspace);
-    if (!ws) {
-        console.log(`workspace ${workspace} is not defined`);
-        return null;
+    if (!wsExists) {
+        return (
+            <Redirect to={`/projects/${project}/workspaces`}/>
+        );
     }
 
     const state = getState(j);
@@ -39,9 +41,8 @@ export const WorkspaceDetail: React.FC<Props> = (props) => {
             <Grid container spacing={1}>
                 <Grid item xs={12}>
                     <Paper className={classes.paper}>
-                        <Title>{ws.getName()}</Title>
+                        <Title>{workspace}</Title>
                         <Typography>Status: {state.status}</Typography>
-                        <Typography>Project Version: {pj.getVersion()}</Typography>
                         <Grid container spacing={3}>
                             <Grid item xs>
                                 <Button size="small" variant="contained" color="primary"
@@ -66,6 +67,9 @@ export const WorkspaceDetail: React.FC<Props> = (props) => {
                 <Grid item xs={12}>
                     <Paper className={classes.paper}>
                         <Title>Plan Result</Title>
+                        {j.getDestroy() && <Typography color="secondary">[DESTROY]</Typography>}
+                        <Typography>Project Version: {j.getProjectVersion()}</Typography>
+                        <Typography>Workspace Version: {j.getWorkspaceVersion()}</Typography>
                         <pre><code>{j.getPlanResult()}</code></pre>
                     </Paper>
                 </Grid>
@@ -87,24 +91,20 @@ export const WorkspaceDetail: React.FC<Props> = (props) => {
  * Hooks
  */
 
-function useJob(project: string, workspace: string): [Job | undefined, () => void] {
-    const [j, setJ] = useState<Job | undefined>(undefined);
+function useWorkspaceExists(project: string, workspace: string, ts: number): boolean {
+    const [ws,] = useAsync(() => listWorkspaces(project).then(wss => wss.includes(workspace)), [project, ts])
+    return (ws === undefined) || ws;
+}
 
-    function reload() {
-        getJob(project, workspace).then(setJ).catch(console.log);
-    }
+function useJob(project: string, workspace: string): [Job | undefined, () => void] {
+    const [j, reload] = useAsync(() => getJob(project, workspace), [project, workspace]);
 
     useEffect(() => {
-        const f = () => {
-            getJob(project, workspace).then(setJ).catch(console.log)
-        };
-        f();
-
-        const t = setInterval(f, 5000);
+        const t = setInterval(reload, 5000);
         return () => {
-            clearInterval(t)
+            clearInterval(t);
         };
-    }, [project, workspace])
+    }, [reload]);
 
     return [j, reload];
 }

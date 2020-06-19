@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"github.com/jinzhu/gorm"
 	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/database"
 	"github.com/mitene/terrafire/internal/utils"
@@ -15,7 +17,20 @@ import (
 	"time"
 )
 
-func TestHandler_Projects(t *testing.T) {
+func NewTestDB(t *testing.T) *DB {
+	db, err := NewDB("sqlite3", fmt.Sprintf("file:%s.db?mode=memory&cache=shared", t.Name()))
+	assert.NoError(t, err)
+	return db
+}
+
+func (s *DB) createRecords(t *testing.T, records []interface{}) {
+	for _, rec := range records {
+		err := s.Create(rec).Error
+		assert.NoError(t, err)
+	}
+}
+
+func TestServer_Projects(t *testing.T) {
 	type gitFetchCall struct {
 		repo     string
 		branch   string
@@ -26,12 +41,14 @@ func TestHandler_Projects(t *testing.T) {
 
 	tests := []struct {
 		projects      map[string]*api.Project
+		dbRecords     []interface{}
 		gitFetchCalls []gitFetchCall
 
 		projectName string
 
-		wantProjectList *api.ListProjectsResponse
-		wantProject     *api.GetProjectResponse
+		wantProjectList       *api.ListProjectsResponse
+		wantWorkspaceList     *api.ListWorkspacesResponse
+		wantWorkspaceVersions map[string]*api.GetWorkspaceVersionResponse
 	}{
 		{
 			projects: map[string]*api.Project{
@@ -43,6 +60,17 @@ func TestHandler_Projects(t *testing.T) {
 					Envs: []*api.Pair{
 						{Key: "pj1-env-k1", Value: "pj1-env-v1"},
 					},
+				},
+			},
+			dbRecords: []interface{}{
+				&database.Workspace{Project: "pj1", Workspace: "ws0"},
+				&database.Workspace{Project: "pj1", Workspace: "ws1", LastJobId: func() *uint { var v uint = 1000; return &v }()},
+				&database.Job{
+					Model:            gorm.Model{ID: 1000},
+					Project:          "pj1",
+					Workspace:        "ws1",
+					ProjectVersion:   "pj1-commit",
+					WorkspaceVersion: "ws1-commit",
 				},
 			},
 			gitFetchCalls: []gitFetchCall{
@@ -59,6 +87,14 @@ workspace "ws1" {
     ref = "ws1-ref"
   }
 }
+workspace "ws2" {
+  source "github" {
+    owner = "ws2-owner"
+    repo = "ws2-repo"
+    path = "ws2-path"
+    ref = "ws2-ref"
+  }
+}
 `,
 					},
 					commit: "pj1-commit",
@@ -73,39 +109,30 @@ workspace "ws1" {
 					{Name: "pj1"},
 				},
 			},
-			wantProject: &api.GetProjectResponse{
-				Project: &api.Project{
-					Name: "pj1",
-					Workspaces: []*api.Workspace{
-						{
-							Name: "ws1",
-							Source: &api.Source{
-								Type:  api.Source_github,
-								Owner: "ws1-owner",
-								Repo:  "ws1-repo",
-								Path:  "ws1-path",
-								Ref:   "ws1-ref",
-							},
-						},
-					},
-					Version: "pj1-commit",
-					Repo:    "pj1-repo",
-					Branch:  "pj1-br",
-					Path:    "pj1-path",
-					Envs: []*api.Pair{
-						{Key: "pj1-env-k1", Value: "pj1-env-v1"},
-					},
-					Error: "",
+			wantWorkspaceList: &api.ListWorkspacesResponse{
+				Workspaces: []*api.ListWorkspacesResponse_Workspace{
+					{Name: "ws0"},
+					{Name: "ws1"},
+					{Name: "ws2"},
 				},
+			},
+			wantWorkspaceVersions: map[string]*api.GetWorkspaceVersionResponse{
+				"ws0": nil,
+				"ws1": {
+					ProjectVersion:   "pj1-commit",
+					WorkspaceVersion: "ws1-commit",
+				},
+				"ws2": nil,
 			},
 		},
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			db, err := database.NewDB("sqlite3", ":memory:")
-			assert.NoError(t, err)
+			db := NewTestDB(t)
 			git := utils.NewGitMock()
-			handler := NewHandler(tt.projects, db, git)
+			srv := New(tt.projects, db, git)
+
+			db.createRecords(t, tt.dbRecords)
 
 			gitFetchCalls := tt.gitFetchCalls
 			gitFetchCall := git.On("Fetch", mock.Anything, mock.Anything, mock.Anything)
@@ -127,31 +154,41 @@ workspace "ws1" {
 				}
 			})
 
-			_, err = handler.RefreshProject(context.Background(), &api.RefreshProjectRequest{Project: tt.projectName})
+			_, err := srv.web.RefreshProject(context.Background(), &api.RefreshProjectRequest{Project: tt.projectName})
 			assert.NoError(t, err)
 
-			resp1, err := handler.ListProjects(context.Background(), &api.ListProjectsRequest{})
+			resp1, err := srv.web.ListProjects(context.Background(), &api.ListProjectsRequest{})
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantProjectList, resp1)
 
-			resp2, err := handler.GetProject(context.Background(), &api.GetProjectRequest{Project: tt.projectName})
+			resp2, err := srv.web.ListWorkspaces(context.Background(), &api.ListWorkspacesRequest{Project: tt.projectName})
 			assert.NoError(t, err)
-			assert.Equal(t, tt.wantProject, resp2)
+			assert.Equal(t, tt.wantWorkspaceList, resp2)
+
+			for _, ws := range resp2.GetWorkspaces() {
+				resp3, _ := srv.scheduler.GetWorkspaceVersion(context.Background(), &api.GetWorkspaceVersionRequest{
+					Project:   tt.projectName,
+					Workspace: ws.GetName(),
+				})
+				assert.Equal(t, tt.wantWorkspaceVersions[ws.GetName()], resp3)
+			}
 		})
 	}
 }
 
-func TestHandler_Actions(t *testing.T) {
+func TestServer_Actions(t *testing.T) {
 	type call struct {
 		request interface {
 			GetProject() string
 			GetWorkspace() string
 		}
-		wantAction *api.GetActionResponse
-		wantJob    *api.Job
+		wantAction           *api.GetActionResponse
+		wantJob              *api.Job
+		wantWorkspaceVersion *api.GetWorkspaceVersionResponse
 	}
 	tests := []struct {
-		projects map[string]*api.Project
+		projects   map[string]*api.Project
+		workspaces map[string]map[string]*api.Workspace
 
 		calls []call
 	}{
@@ -165,11 +202,11 @@ func TestHandler_Actions(t *testing.T) {
 					Envs: []*api.Pair{
 						{Key: "pj1-env-k1", Value: "pj1-env-v1"},
 					},
-					Workspaces: []*api.Workspace{
-						{
-							Name: "ws1",
-						},
-					},
+				},
+			},
+			workspaces: map[string]map[string]*api.Workspace{
+				"pj1": {
+					"ws1": &api.Workspace{Name: "ws1"},
 				},
 			},
 
@@ -186,20 +223,24 @@ func TestHandler_Actions(t *testing.T) {
 					},
 					wantJob: &api.Job{
 						Project:   "pj1",
-						Workspace: "ws1",
+						Workspace: &api.Workspace{Name: "ws1"},
 						Status:    api.Job_Pending,
 					},
 				},
 				{
 					request: &api.UpdateJobStatusRequest{
-						Project:   "pj1",
-						Workspace: "ws1",
-						Status:    api.Job_ReviewRequired,
+						Project:          "pj1",
+						Workspace:        "ws1",
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
 					},
 					wantJob: &api.Job{
-						Project:   "pj1",
-						Workspace: "ws1",
-						Status:    api.Job_ReviewRequired,
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
 					},
 				},
 				{
@@ -213,9 +254,11 @@ func TestHandler_Actions(t *testing.T) {
 						Workspace: "ws1",
 					},
 					wantJob: &api.Job{
-						Project:   "pj1",
-						Workspace: "ws1",
-						Status:    api.Job_ApplyPending,
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ApplyPending,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
 					},
 				},
 				{
@@ -225,9 +268,15 @@ func TestHandler_Actions(t *testing.T) {
 						Status:    api.Job_Succeeded,
 					},
 					wantJob: &api.Job{
-						Project:   "pj1",
-						Workspace: "ws1",
-						Status:    api.Job_Succeeded,
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_Succeeded,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+					wantWorkspaceVersion: &api.GetWorkspaceVersionResponse{
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
 					},
 				},
 			},
@@ -235,28 +284,22 @@ func TestHandler_Actions(t *testing.T) {
 	}
 	for i, tt := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			db, err := database.NewDB("sqlite3", ":memory:")
-			assert.NoError(t, err)
+			db := NewTestDB(t)
 			git := utils.NewGitMock()
-			handler := NewHandler(tt.projects, db, git)
-			for k, v := range tt.projects {
-				handler.workspaces[k] = map[string]*api.Workspace{}
-				for _, v1 := range v.Workspaces {
-					handler.workspaces[k][v1.GetName()] = v1
-				}
-			}
+			srv := New(tt.projects, db, git)
 
 			for _, c := range tt.calls {
 				pj := c.request.GetProject()
 				ws := c.request.GetWorkspace()
 
+				var err error
 				switch req := c.request.(type) {
 				case *api.SubmitJobRequest:
-					_, err = handler.SubmitJob(context.Background(), req)
+					_, err = srv.web.SubmitJob(context.Background(), req)
 				case *api.ApproveJobRequest:
-					_, err = handler.ApproveJob(context.Background(), req)
+					_, err = srv.web.ApproveJob(context.Background(), req)
 				case *api.UpdateJobStatusRequest:
-					_, err = handler.UpdateJobStatus(context.Background(), req)
+					_, err = srv.scheduler.UpdateJobStatus(context.Background(), req)
 				default:
 					assert.FailNow(t, "invalid request type")
 				}
@@ -264,12 +307,12 @@ func TestHandler_Actions(t *testing.T) {
 
 				if c.wantAction != nil {
 					ctx1, _ := context.WithTimeout(context.Background(), 3*time.Second)
-					resp1, err := handler.GetAction(ctx1, &api.GetActionRequest{})
+					resp1, err := srv.scheduler.GetAction(ctx1, &api.GetActionRequest{})
 					assert.NoError(t, err)
 					assert.Equal(t, c.wantAction, resp1)
 				}
 
-				resp2, err := handler.GetJob(context.Background(), &api.GetJobRequest{
+				resp2, err := srv.web.GetJob(context.Background(), &api.GetJobRequest{
 					Project:   pj,
 					Workspace: ws,
 				})
@@ -278,6 +321,12 @@ func TestHandler_Actions(t *testing.T) {
 				c.wantJob.Id = resp2.Job.Id
 				c.wantJob.StartedAt = resp2.Job.StartedAt
 				assert.Equal(t, c.wantJob, resp2.Job)
+
+				resp3, _ := srv.scheduler.GetWorkspaceVersion(context.Background(), &api.GetWorkspaceVersionRequest{
+					Project:   pj,
+					Workspace: ws,
+				})
+				assert.Equal(t, c.wantWorkspaceVersion, resp3)
 			}
 		})
 	}

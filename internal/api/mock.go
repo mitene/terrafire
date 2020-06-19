@@ -33,3 +33,8 @@ func (m *SchedulerClientMock) UpdateJobLog(ctx context.Context, in *UpdateJobLog
 	args := m.Called(ctx, in, opts)
 	return args.Get(0).(*UpdateJobLogResponse), args.Error(1)
 }
+
+func (m *SchedulerClientMock) GetWorkspaceVersion(ctx context.Context, in *GetWorkspaceVersionRequest, opts ...grpc.CallOption) (*GetWorkspaceVersionResponse, error) {
+	args := m.Called(ctx, in, opts)
+	return args.Get(0).(*GetWorkspaceVersionResponse), args.Error(1)
+}

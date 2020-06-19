@@ -20,6 +20,15 @@ Scheduler.GetAction = {
   responseType: scheduler_pb.GetActionResponse
 };
 
+Scheduler.GetActionControl = {
+  methodName: "GetActionControl",
+  service: Scheduler,
+  requestStream: false,
+  responseStream: false,
+  requestType: scheduler_pb.GetActionControlRequest,
+  responseType: scheduler_pb.GetActionControlResponse
+};
+
 Scheduler.UpdateJobStatus = {
   methodName: "UpdateJobStatus",
   service: Scheduler,
@@ -38,6 +47,15 @@ Scheduler.UpdateJobLog = {
   responseType: scheduler_pb.UpdateJobLogResponse
 };
 
+Scheduler.GetWorkspaceVersion = {
+  methodName: "GetWorkspaceVersion",
+  service: Scheduler,
+  requestStream: false,
+  responseStream: false,
+  requestType: scheduler_pb.GetWorkspaceVersionRequest,
+  responseType: scheduler_pb.GetWorkspaceVersionResponse
+};
+
 exports.Scheduler = Scheduler;
 
 function SchedulerClient(serviceHost, options) {
@@ -50,6 +68,37 @@ SchedulerClient.prototype.getAction = function getAction(requestMessage, metadat
     callback = arguments[1];
   }
   var client = grpc.unary(Scheduler.GetAction, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+SchedulerClient.prototype.getActionControl = function getActionControl(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(Scheduler.GetActionControl, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,
@@ -112,6 +161,37 @@ SchedulerClient.prototype.updateJobLog = function updateJobLog(requestMessage, m
     callback = arguments[1];
   }
   var client = grpc.unary(Scheduler.UpdateJobLog, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+SchedulerClient.prototype.getWorkspaceVersion = function getWorkspaceVersion(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(Scheduler.GetWorkspaceVersion, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

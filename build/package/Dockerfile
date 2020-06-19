@@ -25,6 +25,8 @@ RUN go mod download
 
 COPY cmd ./cmd
 COPY internal ./internal
+RUN go build ./cmd/terrafire
+
 COPY --from=build-node /build/build ./web/build
 RUN rice embed-go -i ./internal/server \
     && go build ./cmd/terrafire

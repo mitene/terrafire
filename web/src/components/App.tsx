@@ -1,10 +1,10 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {Redirect, Route, Switch, useParams} from "react-router-dom";
 import {GlobalMenu} from "./GlobalMenu";
-import {Project} from "../api/common_pb";
 import {WorkspacesList} from "./WorkspacesList";
 import {WorkspaceDetail} from "./WorkspaceDetail";
-import {getProject, listProjects, refreshProject} from "../api";
+import {listProjects, refreshProject} from "../api";
+import {useAsync} from "../hooks";
 
 export const App: React.FC = () => {
     const projects = useProjects();
@@ -30,28 +30,22 @@ type Props = {
 }
 
 const AppBody: React.FC<Props> = props => {
-    const projects = props.projects;
-
     const {project} = useParams<{ project: string }>();
-    const [pj, reload] = useProject(project);
+    const [ts, reload] = useForceUpdate();
 
     const handleRefresh = () => {
         refreshProject(project).then(reload).catch(console.log);
     }
 
-    if (!pj) {
-        return null;
-    }
-
     return (
-        <GlobalMenu current={project} projects={projects} onRefresh={handleRefresh}>
+        <GlobalMenu current={project} projects={props.projects} onRefresh={handleRefresh}>
             <Switch>
                 <Route exact path={`/projects/${project}/workspaces`}>
-                    <WorkspacesList project={pj}/>
+                    <WorkspacesList project={project} ts={ts}/>
                 </Route>
 
                 <Route exact path={`/projects/${project}/workspaces/:workspace`} render={(props) =>
-                    <WorkspaceDetail project={pj} workspace={props.match.params.workspace}/>
+                    <WorkspaceDetail project={project} workspace={props.match.params.workspace} ts={ts}/>
                 }/>
 
                 <Route>
@@ -65,26 +59,12 @@ const AppBody: React.FC<Props> = props => {
 /**
  * Hooks
  */
-
-
-function useProjects(): string[] {
-    const [pj, setPj] = useState<string[]>([]);
-
-    useEffect(() => {
-        listProjects().then(setPj).catch(console.log);
-    }, [])
-
-    return pj;
+function useForceUpdate(): [number, () => void] {
+    const [ts, setTs] = useState<number>(Date.now());
+    return [ts, () => setTs(Date.now())];
 }
 
-function useProject(project: string): [Project | undefined, () => void] {
-    const [pj, setPj] = useState<Project | undefined>(undefined);
-
-    const reload = () => {
-        getProject(project).then(setPj).catch(console.log);
-    }
-
-    useEffect(reload, [project])
-
-    return [pj, reload];
+function useProjects(): string[] {
+    const [pj,] = useAsync(listProjects);
+    return pj || [];
 }

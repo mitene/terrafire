@@ -98,45 +98,65 @@ export namespace RefreshProjectResponse {
   }
 }
 
-export class GetProjectRequest extends jspb.Message {
+export class ListWorkspacesRequest extends jspb.Message {
   getProject(): string;
   setProject(value: string): void;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GetProjectRequest.AsObject;
-  static toObject(includeInstance: boolean, msg: GetProjectRequest): GetProjectRequest.AsObject;
+  toObject(includeInstance?: boolean): ListWorkspacesRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: ListWorkspacesRequest): ListWorkspacesRequest.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GetProjectRequest, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GetProjectRequest;
-  static deserializeBinaryFromReader(message: GetProjectRequest, reader: jspb.BinaryReader): GetProjectRequest;
+  static serializeBinaryToWriter(message: ListWorkspacesRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ListWorkspacesRequest;
+  static deserializeBinaryFromReader(message: ListWorkspacesRequest, reader: jspb.BinaryReader): ListWorkspacesRequest;
 }
 
-export namespace GetProjectRequest {
+export namespace ListWorkspacesRequest {
   export type AsObject = {
     project: string,
   }
 }
 
-export class GetProjectResponse extends jspb.Message {
-  hasProject(): boolean;
-  clearProject(): void;
-  getProject(): common_pb.Project | undefined;
-  setProject(value?: common_pb.Project): void;
+export class ListWorkspacesResponse extends jspb.Message {
+  clearWorkspacesList(): void;
+  getWorkspacesList(): Array<ListWorkspacesResponse.Workspace>;
+  setWorkspacesList(value: Array<ListWorkspacesResponse.Workspace>): void;
+  addWorkspaces(value?: ListWorkspacesResponse.Workspace, index?: number): ListWorkspacesResponse.Workspace;
 
   serializeBinary(): Uint8Array;
-  toObject(includeInstance?: boolean): GetProjectResponse.AsObject;
-  static toObject(includeInstance: boolean, msg: GetProjectResponse): GetProjectResponse.AsObject;
+  toObject(includeInstance?: boolean): ListWorkspacesResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: ListWorkspacesResponse): ListWorkspacesResponse.AsObject;
   static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
   static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
-  static serializeBinaryToWriter(message: GetProjectResponse, writer: jspb.BinaryWriter): void;
-  static deserializeBinary(bytes: Uint8Array): GetProjectResponse;
-  static deserializeBinaryFromReader(message: GetProjectResponse, reader: jspb.BinaryReader): GetProjectResponse;
+  static serializeBinaryToWriter(message: ListWorkspacesResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): ListWorkspacesResponse;
+  static deserializeBinaryFromReader(message: ListWorkspacesResponse, reader: jspb.BinaryReader): ListWorkspacesResponse;
 }
 
-export namespace GetProjectResponse {
+export namespace ListWorkspacesResponse {
   export type AsObject = {
-    project?: common_pb.Project.AsObject,
+    workspacesList: Array<ListWorkspacesResponse.Workspace.AsObject>,
+  }
+
+  export class Workspace extends jspb.Message {
+    getName(): string;
+    setName(value: string): void;
+
+    serializeBinary(): Uint8Array;
+    toObject(includeInstance?: boolean): Workspace.AsObject;
+    static toObject(includeInstance: boolean, msg: Workspace): Workspace.AsObject;
+    static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+    static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+    static serializeBinaryToWriter(message: Workspace, writer: jspb.BinaryWriter): void;
+    static deserializeBinary(bytes: Uint8Array): Workspace;
+    static deserializeBinaryFromReader(message: Workspace, reader: jspb.BinaryReader): Workspace;
+  }
+
+  export namespace Workspace {
+    export type AsObject = {
+      name: string,
+    }
   }
 }
 

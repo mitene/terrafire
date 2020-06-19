@@ -29,13 +29,13 @@ Web.RefreshProject = {
   responseType: web_pb.RefreshProjectResponse
 };
 
-Web.GetProject = {
-  methodName: "GetProject",
+Web.ListWorkspaces = {
+  methodName: "ListWorkspaces",
   service: Web,
   requestStream: false,
   responseStream: false,
-  requestType: web_pb.GetProjectRequest,
-  responseType: web_pb.GetProjectResponse
+  requestType: web_pb.ListWorkspacesRequest,
+  responseType: web_pb.ListWorkspacesResponse
 };
 
 Web.GetJob = {
@@ -134,11 +134,11 @@ WebClient.prototype.refreshProject = function refreshProject(requestMessage, met
   };
 };
 
-WebClient.prototype.getProject = function getProject(requestMessage, metadata, callback) {
+WebClient.prototype.listWorkspaces = function listWorkspaces(requestMessage, metadata, callback) {
   if (arguments.length === 2) {
     callback = arguments[1];
   }
-  var client = grpc.unary(Web.GetProject, {
+  var client = grpc.unary(Web.ListWorkspaces, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

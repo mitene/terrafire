@@ -7,7 +7,7 @@ option go_package = "github.com/mitene/terrafire/internal/api";
 service Web {
     rpc ListProjects (ListProjectsRequest) returns (ListProjectsResponse) {}
     rpc RefreshProject (RefreshProjectRequest) returns (RefreshProjectResponse) {}
-    rpc GetProject (GetProjectRequest) returns (GetProjectResponse) {}
+    rpc ListWorkspaces (ListWorkspacesRequest) returns (ListWorkspacesResponse) {}
     rpc GetJob (GetJobRequest) returns (GetJobResponse) {}
     rpc SubmitJob (SubmitJobRequest) returns (SubmitJobResponse) {}
     rpc ApproveJob (ApproveJobRequest) returns (ApproveJobResponse) {}
@@ -30,12 +30,15 @@ message RefreshProjectRequest {
 message RefreshProjectResponse {
 }
 
-message GetProjectRequest {
+message ListWorkspacesRequest {
     string project = 1;
 }
 
-message GetProjectResponse {
-    Project project = 1;
+message ListWorkspacesResponse {
+    message Workspace {
+        string name = 1;
+    }
+    repeated Workspace workspaces = 1;
 }
 
 message GetJobRequest {

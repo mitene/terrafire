@@ -6,26 +6,18 @@ import "google/protobuf/timestamp.proto";
 
 message Project {
     string name = 1;
-    repeated Workspace workspaces = 2;
-    string version = 3;
-    string repo = 4;
-    string branch = 5;
-    string path = 6;
-    repeated Pair envs = 7;
-    string error = 8;
+    string repo = 2;
+    string branch = 3;
+    string path = 4;
+    repeated Pair envs = 5;
 }
 
 message Workspace {
-    string Name = 1;
+    string name = 1;
     Source source = 2;
     string workspace = 3;
     repeated Pair vars = 4;
-    repeated string VarFiles = 5;
-}
-
-message Manifest {
-    repeated Workspace workspaces = 1;
-    string version = 2;
+    repeated Pair var_files = 5;
 }
 
 message Source {
@@ -51,7 +43,7 @@ message Job {
     uint64 id = 1;
     google.protobuf.Timestamp started_at = 2;
     string Project = 3;
-    string Workspace = 4;
+    Workspace Workspace = 4;
     enum Status {
         Pending = 0;
         PlanInProgress = 1;
@@ -67,6 +59,9 @@ message Job {
     string error = 7;
     string plan_log = 8;
     string apply_log = 9;
+    string project_version = 10;
+    string workspace_version = 11;
+    bool destroy = 12;
 }
 
 enum Phase {

@@ -5,9 +5,6 @@ import * as jspb from "google-protobuf";
 import * as common_pb from "./common_pb";
 
 export class GetActionRequest extends jspb.Message {
-  getTimeout(): number;
-  setTimeout(value: number): void;
-
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): GetActionRequest.AsObject;
   static toObject(includeInstance: boolean, msg: GetActionRequest): GetActionRequest.AsObject;
@@ -20,13 +17,12 @@ export class GetActionRequest extends jspb.Message {
 
 export namespace GetActionRequest {
   export type AsObject = {
-    timeout: number,
   }
 }
 
 export class GetActionResponse extends jspb.Message {
-  getType(): GetActionResponse.ActionTypeMap[keyof GetActionResponse.ActionTypeMap];
-  setType(value: GetActionResponse.ActionTypeMap[keyof GetActionResponse.ActionTypeMap]): void;
+  getType(): GetActionResponse.TypeMap[keyof GetActionResponse.TypeMap];
+  setType(value: GetActionResponse.TypeMap[keyof GetActionResponse.TypeMap]): void;
 
   getProject(): string;
   setProject(value: string): void;
@@ -46,18 +42,69 @@ export class GetActionResponse extends jspb.Message {
 
 export namespace GetActionResponse {
   export type AsObject = {
-    type: GetActionResponse.ActionTypeMap[keyof GetActionResponse.ActionTypeMap],
+    type: GetActionResponse.TypeMap[keyof GetActionResponse.TypeMap],
     project: string,
     workspace: string,
   }
 
-  export interface ActionTypeMap {
+  export interface TypeMap {
     NONE: 0;
     SUBMIT: 1;
     APPROVE: 2;
   }
 
-  export const ActionType: ActionTypeMap;
+  export const Type: TypeMap;
+}
+
+export class GetActionControlRequest extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetActionControlRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GetActionControlRequest): GetActionControlRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetActionControlRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetActionControlRequest;
+  static deserializeBinaryFromReader(message: GetActionControlRequest, reader: jspb.BinaryReader): GetActionControlRequest;
+}
+
+export namespace GetActionControlRequest {
+  export type AsObject = {
+  }
+}
+
+export class GetActionControlResponse extends jspb.Message {
+  getType(): GetActionControlResponse.TypeMap[keyof GetActionControlResponse.TypeMap];
+  setType(value: GetActionControlResponse.TypeMap[keyof GetActionControlResponse.TypeMap]): void;
+
+  getProject(): string;
+  setProject(value: string): void;
+
+  getWorkspace(): string;
+  setWorkspace(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetActionControlResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GetActionControlResponse): GetActionControlResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetActionControlResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetActionControlResponse;
+  static deserializeBinaryFromReader(message: GetActionControlResponse, reader: jspb.BinaryReader): GetActionControlResponse;
+}
+
+export namespace GetActionControlResponse {
+  export type AsObject = {
+    type: GetActionControlResponse.TypeMap[keyof GetActionControlResponse.TypeMap],
+    project: string,
+    workspace: string,
+  }
+
+  export interface TypeMap {
+    NONE: 0;
+    CANCEL: 1;
+  }
+
+  export const Type: TypeMap;
 }
 
 export class UpdateJobStatusRequest extends jspb.Message {
@@ -76,6 +123,15 @@ export class UpdateJobStatusRequest extends jspb.Message {
   getError(): string;
   setError(value: string): void;
 
+  getProjectVersion(): string;
+  setProjectVersion(value: string): void;
+
+  getWorkspaceVersion(): string;
+  setWorkspaceVersion(value: string): void;
+
+  getDestroy(): boolean;
+  setDestroy(value: boolean): void;
+
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): UpdateJobStatusRequest.AsObject;
   static toObject(includeInstance: boolean, msg: UpdateJobStatusRequest): UpdateJobStatusRequest.AsObject;
@@ -93,6 +149,9 @@ export namespace UpdateJobStatusRequest {
     status: common_pb.Job.StatusMap[keyof common_pb.Job.StatusMap],
     result: string,
     error: string,
+    projectVersion: string,
+    workspaceVersion: string,
+    destroy: boolean,
   }
 }
 
@@ -157,6 +216,54 @@ export class UpdateJobLogResponse extends jspb.Message {
 
 export namespace UpdateJobLogResponse {
   export type AsObject = {
+  }
+}
+
+export class GetWorkspaceVersionRequest extends jspb.Message {
+  getProject(): string;
+  setProject(value: string): void;
+
+  getWorkspace(): string;
+  setWorkspace(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetWorkspaceVersionRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: GetWorkspaceVersionRequest): GetWorkspaceVersionRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetWorkspaceVersionRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetWorkspaceVersionRequest;
+  static deserializeBinaryFromReader(message: GetWorkspaceVersionRequest, reader: jspb.BinaryReader): GetWorkspaceVersionRequest;
+}
+
+export namespace GetWorkspaceVersionRequest {
+  export type AsObject = {
+    project: string,
+    workspace: string,
+  }
+}
+
+export class GetWorkspaceVersionResponse extends jspb.Message {
+  getProjectVersion(): string;
+  setProjectVersion(value: string): void;
+
+  getWorkspaceVersion(): string;
+  setWorkspaceVersion(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): GetWorkspaceVersionResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: GetWorkspaceVersionResponse): GetWorkspaceVersionResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: GetWorkspaceVersionResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): GetWorkspaceVersionResponse;
+  static deserializeBinaryFromReader(message: GetWorkspaceVersionResponse, reader: jspb.BinaryReader): GetWorkspaceVersionResponse;
+}
+
+export namespace GetWorkspaceVersionResponse {
+  export type AsObject = {
+    projectVersion: string,
+    workspaceVersion: string,
   }
 }
 

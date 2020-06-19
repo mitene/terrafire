@@ -1,11 +1,12 @@
 import {
     ApproveJobRequest,
     GetJobRequest,
-    GetProjectRequest, ListProjectsRequest,
+    ListProjectsRequest,
+    ListWorkspacesRequest,
     RefreshProjectRequest,
     SubmitJobRequest
 } from "./api/web_pb";
-import {Job, Project} from "./api/common_pb";
+import {Job} from "./api/common_pb";
 import {WebClient} from "./api/web_pb_service";
 
 export function listProjects(): Promise<string[]> {
@@ -20,20 +21,20 @@ export function listProjects(): Promise<string[]> {
         })
     })
 }
-export function getProject(project: string): Promise<Project> {
-    return new Promise<Project>((resolve, reject) => {
+
+export function listWorkspaces(project: string): Promise<string[]> {
+    return new Promise(((resolve, reject) => {
         const client = new WebClient("");
-        const req = new GetProjectRequest();
+        const req = new ListWorkspacesRequest();
         req.setProject(project);
-        client.getProject(req, (err, resp) => {
-            const pj = resp?.getProject();
-            if (pj) {
-                resolve(pj);
+        client.listWorkspaces(req, (err, resp) => {
+            if (resp) {
+                resolve(resp.getWorkspacesList().map(resp => resp.getName()));
             } else {
-                reject(err || "failed to get project");
+                reject(err || "failed to list workspaces");
             }
         })
-    })
+    }))
 }
 
 export function refreshProject(project: string): Promise<void> {
@@ -41,7 +42,7 @@ export function refreshProject(project: string): Promise<void> {
         const client = new WebClient("");
         const req = new RefreshProjectRequest();
         req.setProject(project);
-        client.refreshProject(req, (err, resp) => {
+        client.refreshProject(req, (err) => {
             if (!err) {
                 resolve();
             } else {
@@ -51,19 +52,18 @@ export function refreshProject(project: string): Promise<void> {
     })
 }
 
-export function getJob(project: string, workspace: string) {
+export function getJob(project: string, workspace: string): Promise<Job | undefined> {
     const req = new GetJobRequest();
     req.setProject(project);
     req.setWorkspace(workspace);
 
-    return new Promise<Job>((resolve, reject) => {
+    return new Promise<Job | undefined>((resolve, reject) => {
         const client = new WebClient("");
         client.getJob(req, (err, resp) => {
-            const j = resp?.getJob();
-            if (j) {
-                resolve(j);
+            if (!err) {
+                resolve(resp?.getJob());
             } else {
-                reject(err || `job not found in workspace ${project}/${workspace}`);
+                reject(err);
             }
         })
     });

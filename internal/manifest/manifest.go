@@ -15,7 +15,7 @@ import (
 )
 
 // Parse all `*.hcl` files in the given directory.
-func Load(dirPath string) (*api.Manifest, error) {
+func Load(dirPath string) ([]*api.Workspace, error) {
 	files, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -52,9 +52,8 @@ func Load(dirPath string) (*api.Manifest, error) {
 				Ref   string `hcl:"ref,optional"`
 			} `hcl:"source,block"`
 			Workspace string     `hcl:"workspace,optional"`
-			RawVars   *cty.Value `hcl:"vars,optional"`
-			Vars      map[string]string
-			VarFiles  []string `hcl:"var_files,optional"`
+			Vars      *cty.Value `hcl:"vars,optional"`
+			VarFiles  []string   `hcl:"var_files,optional"`
 		} `hcl:"workspace,block"`
 	}
 	diags = gohcl.DecodeBody(hcl.MergeBodies(bodies), nil, &config)
@@ -62,16 +61,15 @@ func Load(dirPath string) (*api.Manifest, error) {
 		return nil, diags
 	}
 
-	out := &api.Manifest{
-		Workspaces: make([]*api.Workspace, 0, len(config.Workspaces)),
-	}
+	out := make([]*api.Workspace, 0, len(config.Workspaces))
+
 	for _, d := range config.Workspaces {
-		vars, err := convertRawVars(d.RawVars)
+		vars, err := convertRawVars(d.Vars)
 		if err != nil {
 			return nil, err
 		}
 
-		varFiles, err := resolveVarFiles(d.VarFiles)
+		varFiles, err := resolveVarFiles(dirPath, d.VarFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -81,7 +79,7 @@ func Load(dirPath string) (*api.Manifest, error) {
 			return nil, fmt.Errorf("invalid source type: %s", d.Source.Type)
 		}
 
-		out.Workspaces = append(out.Workspaces, &api.Workspace{
+		out = append(out, &api.Workspace{
 			Name: d.Name,
 			Source: &api.Source{
 				Type:  api.Source_Type(sourceType),
@@ -127,18 +125,25 @@ func convertRawVars(value *cty.Value) ([]*api.Pair, error) {
 	return ret, nil
 }
 
-func resolveVarFiles(varFiles []string) ([]string, error) {
+func resolveVarFiles(dir string, varFiles []string) ([]*api.Pair, error) {
 	if varFiles == nil {
 		return nil, nil
 	}
 
-	files := make([]string, len(varFiles))
+	ret := make([]*api.Pair, len(varFiles))
 	for i, f := range varFiles {
-		files[i] = filepath.Clean(f)
-		if strings.HasPrefix("..", files[i]) {
-			return nil, fmt.Errorf("invalid var file path: %s", files[i])
+		fp := filepath.Clean(f)
+		if strings.HasPrefix("..", fp) {
+			return nil, fmt.Errorf("cannot read parent directory: %s", fp)
 		}
+
+		body, err := ioutil.ReadFile(filepath.Join(dir, fp))
+		if err != nil {
+			return nil, err
+		}
+
+		ret[i] = &api.Pair{Key: fp, Value: string(body)}
 	}
 
-	return files, nil
+	return ret, nil
 }

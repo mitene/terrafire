@@ -13,6 +13,15 @@ type SchedulerGetAction = {
   readonly responseType: typeof scheduler_pb.GetActionResponse;
 };
 
+type SchedulerGetActionControl = {
+  readonly methodName: string;
+  readonly service: typeof Scheduler;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof scheduler_pb.GetActionControlRequest;
+  readonly responseType: typeof scheduler_pb.GetActionControlResponse;
+};
+
 type SchedulerUpdateJobStatus = {
   readonly methodName: string;
   readonly service: typeof Scheduler;
@@ -31,11 +40,22 @@ type SchedulerUpdateJobLog = {
   readonly responseType: typeof scheduler_pb.UpdateJobLogResponse;
 };
 
+type SchedulerGetWorkspaceVersion = {
+  readonly methodName: string;
+  readonly service: typeof Scheduler;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof scheduler_pb.GetWorkspaceVersionRequest;
+  readonly responseType: typeof scheduler_pb.GetWorkspaceVersionResponse;
+};
+
 export class Scheduler {
   static readonly serviceName: string;
   static readonly GetAction: SchedulerGetAction;
+  static readonly GetActionControl: SchedulerGetActionControl;
   static readonly UpdateJobStatus: SchedulerUpdateJobStatus;
   static readonly UpdateJobLog: SchedulerUpdateJobLog;
+  static readonly GetWorkspaceVersion: SchedulerGetWorkspaceVersion;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -79,6 +99,15 @@ export class SchedulerClient {
     requestMessage: scheduler_pb.GetActionRequest,
     callback: (error: ServiceError|null, responseMessage: scheduler_pb.GetActionResponse|null) => void
   ): UnaryResponse;
+  getActionControl(
+    requestMessage: scheduler_pb.GetActionControlRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: scheduler_pb.GetActionControlResponse|null) => void
+  ): UnaryResponse;
+  getActionControl(
+    requestMessage: scheduler_pb.GetActionControlRequest,
+    callback: (error: ServiceError|null, responseMessage: scheduler_pb.GetActionControlResponse|null) => void
+  ): UnaryResponse;
   updateJobStatus(
     requestMessage: scheduler_pb.UpdateJobStatusRequest,
     metadata: grpc.Metadata,
@@ -96,6 +125,15 @@ export class SchedulerClient {
   updateJobLog(
     requestMessage: scheduler_pb.UpdateJobLogRequest,
     callback: (error: ServiceError|null, responseMessage: scheduler_pb.UpdateJobLogResponse|null) => void
+  ): UnaryResponse;
+  getWorkspaceVersion(
+    requestMessage: scheduler_pb.GetWorkspaceVersionRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: scheduler_pb.GetWorkspaceVersionResponse|null) => void
+  ): UnaryResponse;
+  getWorkspaceVersion(
+    requestMessage: scheduler_pb.GetWorkspaceVersionRequest,
+    callback: (error: ServiceError|null, responseMessage: scheduler_pb.GetWorkspaceVersionResponse|null) => void
   ): UnaryResponse;
 }
 

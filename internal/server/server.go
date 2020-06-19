@@ -6,51 +6,80 @@ import (
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/utils"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"net"
 	"net/http"
 )
 
 type Server struct {
-	handler *Handler
-	server  *grpc.Server
-	logger  *logrus.Entry
+	web       *Web
+	scheduler *Scheduler
 }
 
-func NewServer(handler *Handler) *Server {
-	logger := log.WithField("name", "server")
-	srv := grpc.NewServer(
-		grpc_middleware.WithUnaryServerChain(grpc_logrus.UnaryServerInterceptor(logger)),
-		grpc_middleware.WithStreamServerChain(grpc_logrus.StreamServerInterceptor(logger)),
-	)
-	api.RegisterWebServer(srv, handler)
+func New(projects map[string]*api.Project, db *DB, git utils.Git) *Server {
+	actions := make(chan *api.GetActionResponse, 100)
+	actionControls := make(chan *api.GetActionControlResponse, 100)
+
+	web := &Web{
+		projects:   projects,
+		workspaces: map[string]map[string]*api.Workspace{},
+		actions:    actions,
+		db:         db,
+		git:        git,
+	}
+
+	scheduler := &Scheduler{
+		actions:        actions,
+		actionControls: actionControls,
+		db:             db,
+	}
+
 	return &Server{
-		handler: handler,
-		server:  srv,
-		logger:  logger,
+		web:       web,
+		scheduler: scheduler,
 	}
 }
 
-func (s *Server) Start(address string) error {
-	srv := grpcweb.WrapServer(s.server)
+func (s *Server) StartWeb(address string) error {
+	logger := log.WithField("name", "web")
+	server := grpc.NewServer(
+		grpc_middleware.WithUnaryServerChain(grpc_logrus.UnaryServerInterceptor(logger)),
+		grpc_middleware.WithStreamServerChain(grpc_logrus.StreamServerInterceptor(logger)),
+	)
+	api.RegisterWebServer(server, s.web)
+
+	srv := grpcweb.WrapServer(server)
 	assets := http.FileServer(newAssetsFileSystem())
-
-	s.logger.Info("start")
-
-	go func() {
-		utils.LogError(s.handler.refreshAllProject())
-	}()
-
-	return http.ListenAndServe(address, http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
+	handler := http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if srv.IsGrpcWebRequest(req) {
 			srv.ServeHTTP(resp, req)
 		} else {
 			assets.ServeHTTP(resp, req)
 		}
-	}))
+	})
+
+	utils.LogError(s.web.refreshAllProject())
+
+	logger.Info("start")
+
+	return http.ListenAndServe(address, handler)
 }
 
-func (s *Server) Stop() {
-	s.server.Stop()
+func (s *Server) StartScheduler(address string) error {
+	logger := log.WithField("name", "scheduler")
+	server := grpc.NewServer(
+		grpc_middleware.WithUnaryServerChain(grpc_logrus.UnaryServerInterceptor(logger)),
+		grpc_middleware.WithStreamServerChain(grpc_logrus.StreamServerInterceptor(logger)),
+	)
+	api.RegisterSchedulerServer(server, s.scheduler)
+
+	logger.Info("start")
+
+	lis, err := net.Listen("tcp", address)
+	if err != nil {
+		return err
+	}
+
+	return server.Serve(lis)
 }
