@@ -16,6 +16,7 @@ web:
 
 .PHONY: proto
 proto:
+	make -C web proto
 	protoc -I api --go_out=plugins=grpc:./internal/api --go_opt=paths=source_relative api/*.proto
 
 .PHONY: test

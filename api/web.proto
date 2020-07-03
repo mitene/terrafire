@@ -11,6 +11,7 @@ service Web {
     rpc GetJob (GetJobRequest) returns (GetJobResponse) {}
     rpc SubmitJob (SubmitJobRequest) returns (SubmitJobResponse) {}
     rpc ApproveJob (ApproveJobRequest) returns (ApproveJobResponse) {}
+    rpc CancelJob (CancelJobRequest) returns (CancelJobResponse) {}
 }
 
 message ListProjectsRequest {
@@ -59,6 +60,14 @@ message SubmitJobResponse {
 }
 
 message ApproveJobRequest {
+    string project = 1;
+    string workspace = 2;
+}
+
+message CancelJobResponse {
+}
+
+message CancelJobRequest {
     string project = 1;
     string workspace = 2;
 }

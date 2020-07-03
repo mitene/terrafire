@@ -1,5 +1,5 @@
 import {
-    ApproveJobRequest,
+    ApproveJobRequest, CancelJobRequest,
     GetJobRequest,
     ListProjectsRequest,
     ListWorkspacesRequest,
@@ -95,6 +95,23 @@ export function approveJob(project: string, workspace: string): Promise<void> {
 
         const client = new WebClient("");
         client.approveJob(req, (err) => {
+            if (!err) {
+                resolve();
+            } else {
+                reject(err);
+            }
+        })
+    })
+}
+
+export function cancelJob(project: string, workspace: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+        const req = new CancelJobRequest();
+        req.setProject(project);
+        req.setWorkspace(workspace);
+
+        const client = new WebClient("");
+        client.cancelJob(req, (err) => {
             if (!err) {
                 resolve();
             } else {

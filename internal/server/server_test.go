@@ -2,13 +2,14 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/database"
 	"github.com/mitene/terrafire/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -16,19 +17,6 @@ import (
 	"testing"
 	"time"
 )
-
-func NewTestDB(t *testing.T) *DB {
-	db, err := NewDB("sqlite3", fmt.Sprintf("file:%s.db?mode=memory&cache=shared", t.Name()))
-	assert.NoError(t, err)
-	return db
-}
-
-func (s *DB) createRecords(t *testing.T, records []interface{}) {
-	for _, rec := range records {
-		err := s.Create(rec).Error
-		assert.NoError(t, err)
-	}
-}
 
 func TestServer_Projects(t *testing.T) {
 	type gitFetchCall struct {
@@ -178,11 +166,14 @@ workspace "ws2" {
 
 func TestServer_Actions(t *testing.T) {
 	type call struct {
+		name    string
 		request interface {
 			GetProject() string
 			GetWorkspace() string
 		}
+		wantError            string
 		wantAction           *api.GetActionResponse
+		wantActionControl    *api.GetActionControlResponse
 		wantJob              *api.Job
 		wantWorkspaceVersion *api.GetWorkspaceVersionResponse
 	}
@@ -192,6 +183,7 @@ func TestServer_Actions(t *testing.T) {
 
 		calls []call
 	}{
+		// test normal sequence
 		{
 			projects: map[string]*api.Project{
 				"pj1": {
@@ -212,6 +204,7 @@ func TestServer_Actions(t *testing.T) {
 
 			calls: []call{
 				{
+					name: "submit",
 					request: &api.SubmitJobRequest{
 						Project:   "pj1",
 						Workspace: "ws1",
@@ -228,6 +221,20 @@ func TestServer_Actions(t *testing.T) {
 					},
 				},
 				{
+					name: "plan in progress",
+					request: &api.UpdateJobStatusRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+						Status:    api.Job_PlanInProgress,
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_PlanInProgress,
+					},
+				},
+				{
+					name: "review required",
 					request: &api.UpdateJobStatusRequest{
 						Project:          "pj1",
 						Workspace:        "ws1",
@@ -244,6 +251,7 @@ func TestServer_Actions(t *testing.T) {
 					},
 				},
 				{
+					name: "approve",
 					request: &api.ApproveJobRequest{
 						Project:   "pj1",
 						Workspace: "ws1",
@@ -262,6 +270,22 @@ func TestServer_Actions(t *testing.T) {
 					},
 				},
 				{
+					name: "apply in progress",
+					request: &api.UpdateJobStatusRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+						Status:    api.Job_ApplyInProgress,
+					},
+					wantJob: &api.Job{
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ApplyInProgress,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+				},
+				{
+					name: "succeeded",
 					request: &api.UpdateJobStatusRequest{
 						Project:   "pj1",
 						Workspace: "ws1",
@@ -275,6 +299,246 @@ func TestServer_Actions(t *testing.T) {
 						WorkspaceVersion: "ws1-commit",
 					},
 					wantWorkspaceVersion: &api.GetWorkspaceVersionResponse{
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+				},
+			},
+		},
+
+		// test invalid state transition
+		{
+			projects: map[string]*api.Project{
+				"pj1": {
+					Name:   "pj1",
+					Repo:   "pj1-repo",
+					Branch: "pj1-br",
+					Path:   "pj1-path",
+					Envs: []*api.Pair{
+						{Key: "pj1-env-k1", Value: "pj1-env-v1"},
+					},
+				},
+			},
+			workspaces: map[string]map[string]*api.Workspace{
+				"pj1": {
+					"ws1": &api.Workspace{Name: "ws1"},
+				},
+			},
+
+			calls: []call{
+				{
+					name: "submit",
+					request: &api.SubmitJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantAction: &api.GetActionResponse{
+						Type:      api.GetActionResponse_SUBMIT,
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_Pending,
+					},
+				},
+				{
+					name: "plan in progress",
+					request: &api.UpdateJobStatusRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+						Status:    api.Job_PlanInProgress,
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_PlanInProgress,
+					},
+				},
+				{
+					name: "plan in progress (duplicate)",
+					request: &api.UpdateJobStatusRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+						Status:    api.Job_PlanInProgress,
+					},
+					wantError: status.Error(codes.Aborted, "invalid state transition").Error(),
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_PlanInProgress,
+					},
+				},
+				{
+					name: "review required",
+					request: &api.UpdateJobStatusRequest{
+						Project:          "pj1",
+						Workspace:        "ws1",
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+					wantJob: &api.Job{
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+				},
+				{
+					name: "apply in progress",
+					request: &api.UpdateJobStatusRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+						Status:    api.Job_ApplyInProgress,
+					},
+					wantError: status.Error(codes.Aborted, "invalid state transition").Error(),
+					wantJob: &api.Job{
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+				},
+			},
+		},
+
+		// test normal sequence
+		{
+			projects: map[string]*api.Project{
+				"pj1": {
+					Name:   "pj1",
+					Repo:   "pj1-repo",
+					Branch: "pj1-br",
+					Path:   "pj1-path",
+					Envs: []*api.Pair{
+						{Key: "pj1-env-k1", Value: "pj1-env-v1"},
+					},
+				},
+			},
+			workspaces: map[string]map[string]*api.Workspace{
+				"pj1": {
+					"ws1": &api.Workspace{Name: "ws1"},
+				},
+			},
+
+			calls: []call{
+				{
+					name: "submit",
+					request: &api.SubmitJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_Pending,
+					},
+				},
+				{
+					name: "cancel",
+					request: &api.CancelJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantAction: &api.GetActionResponse{
+						Type: api.GetActionResponse_NONE,
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_PlanFailed,
+					},
+				},
+				{
+					name: "submit (2nd)",
+					request: &api.SubmitJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_Pending,
+					},
+				},
+				{
+					name: "plan in progress",
+					request: &api.UpdateJobStatusRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+						Status:    api.Job_PlanInProgress,
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_PlanInProgress,
+					},
+				},
+				{
+					name: "cancel (2nd)",
+					request: &api.CancelJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantActionControl: &api.GetActionControlResponse{
+						Type:      api.GetActionControlResponse_CANCEL,
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantJob: &api.Job{
+						Project:   "pj1",
+						Workspace: &api.Workspace{Name: "ws1"},
+						Status:    api.Job_PlanInProgress,
+					},
+				},
+				{
+					name: "review required",
+					request: &api.UpdateJobStatusRequest{
+						Project:          "pj1",
+						Workspace:        "ws1",
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+					wantJob: &api.Job{
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ReviewRequired,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+				},
+				{
+					name: "approve",
+					request: &api.ApproveJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantJob: &api.Job{
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ApplyPending,
+						ProjectVersion:   "pj1-commit",
+						WorkspaceVersion: "ws1-commit",
+					},
+				},
+				{
+					name: "cancel (3rd)",
+					request: &api.CancelJobRequest{
+						Project:   "pj1",
+						Workspace: "ws1",
+					},
+					wantAction: &api.GetActionResponse{
+						Type: api.GetActionResponse_NONE,
+					},
+					wantJob: &api.Job{
+						Project:          "pj1",
+						Workspace:        &api.Workspace{Name: "ws1"},
+						Status:           api.Job_ApplyFailed,
 						ProjectVersion:   "pj1-commit",
 						WorkspaceVersion: "ws1-commit",
 					},
@@ -298,35 +562,56 @@ func TestServer_Actions(t *testing.T) {
 					_, err = srv.web.SubmitJob(context.Background(), req)
 				case *api.ApproveJobRequest:
 					_, err = srv.web.ApproveJob(context.Background(), req)
+				case *api.CancelJobRequest:
+					_, err = srv.web.CancelJob(context.Background(), req)
 				case *api.UpdateJobStatusRequest:
 					_, err = srv.scheduler.UpdateJobStatus(context.Background(), req)
 				default:
 					assert.FailNow(t, "invalid request type")
 				}
-				assert.NoError(t, err)
+				if c.wantError == "" {
+					assert.NoError(t, err, c.name)
+				} else {
+					assert.EqualError(t, err, c.wantError, c.name)
+				}
 
 				if c.wantAction != nil {
-					ctx1, _ := context.WithTimeout(context.Background(), 3*time.Second)
+					ctx1, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
 					resp1, err := srv.scheduler.GetAction(ctx1, &api.GetActionRequest{})
-					assert.NoError(t, err)
-					assert.Equal(t, c.wantAction, resp1)
+					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled {
+						resp1 = &api.GetActionResponse{Type: api.GetActionResponse_NONE}
+					} else {
+						assert.NoError(t, err, c.name)
+					}
+					assert.Equal(t, c.wantAction, resp1, c.name)
+				}
+
+				if c.wantActionControl != nil {
+					ctx2, _ := context.WithTimeout(context.Background(), 10*time.Millisecond)
+					resp2, err := srv.scheduler.GetActionControl(ctx2, &api.GetActionControlRequest{})
+					if st, ok := status.FromError(err); ok && st.Code() == codes.Canceled {
+						resp2 = &api.GetActionControlResponse{Type: api.GetActionControlResponse_NONE}
+					} else {
+						assert.NoError(t, err, c.name)
+					}
+					assert.Equal(t, c.wantActionControl, resp2, c.name)
 				}
 
 				resp2, err := srv.web.GetJob(context.Background(), &api.GetJobRequest{
 					Project:   pj,
 					Workspace: ws,
 				})
-				assert.NoError(t, err)
+				assert.NoError(t, err, c.name)
 				// ignore Id and StartedAt
 				c.wantJob.Id = resp2.Job.Id
 				c.wantJob.StartedAt = resp2.Job.StartedAt
-				assert.Equal(t, c.wantJob, resp2.Job)
+				assert.Equal(t, c.wantJob, resp2.Job, c.name)
 
 				resp3, _ := srv.scheduler.GetWorkspaceVersion(context.Background(), &api.GetWorkspaceVersionRequest{
 					Project:   pj,
 					Workspace: ws,
 				})
-				assert.Equal(t, c.wantWorkspaceVersion, resp3)
+				assert.Equal(t, c.wantWorkspaceVersion, resp3, c.name)
 			}
 		})
 	}

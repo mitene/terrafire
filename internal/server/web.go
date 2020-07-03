@@ -17,11 +17,11 @@ import (
 )
 
 type Web struct {
-	projects   map[string]*api.Project
-	workspaces map[string]map[string]*api.Workspace
-	actions    chan *api.GetActionResponse
-	db         *DB
-	git        utils.Git
+	projects       map[string]*api.Project
+	workspaces     map[string]map[string]*api.Workspace
+	actionControls chan *api.GetActionControlResponse
+	db             *DB
+	git            utils.Git
 }
 
 func (s *Web) RefreshProject(_ context.Context, req *api.RefreshProjectRequest) (*api.RefreshProjectResponse, error) {
@@ -132,16 +132,19 @@ func (s *Web) SubmitJob(_ context.Context, req *api.SubmitJobRequest) (*api.Subm
 			return err
 		}
 
+		err = tx.enqueue(&api.GetActionResponse{
+			Type:      api.GetActionResponse_SUBMIT,
+			Project:   project,
+			Workspace: workspace,
+		})
+		if err != nil {
+			return err
+		}
+
 		return tx.Model(ws).Update("job_id", j.ID).Error
 	})
 	if err != nil {
 		return nil, err
-	}
-
-	s.actions <- &api.GetActionResponse{
-		Type:      api.GetActionResponse_SUBMIT,
-		Project:   project,
-		Workspace: workspace,
 	}
 
 	return &api.SubmitJobResponse{}, nil
@@ -162,19 +165,77 @@ func (s *Web) ApproveJob(_ context.Context, req *api.ApproveJobRequest) (*api.Ap
 			return err
 		}
 
+		err = tx.enqueue(&api.GetActionResponse{
+			Type:      api.GetActionResponse_APPROVE,
+			Project:   project,
+			Workspace: workspace,
+		})
+		if err != nil {
+			return err
+		}
+
 		return tx.Model(j).Update("status", api.Job_ApplyPending).Error
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	s.actions <- &api.GetActionResponse{
-		Type:      api.GetActionResponse_APPROVE,
-		Project:   project,
-		Workspace: workspace,
+	return &api.ApproveJobResponse{}, nil
+}
+
+func (s *Web) CancelJob(_ context.Context, req *api.CancelJobRequest) (*api.CancelJobResponse, error) {
+	project := req.GetProject()
+	workspace := req.GetWorkspace()
+
+	err := s.db.Transaction(func(tx *DB) error {
+		j, err := tx.getJob(project, workspace)
+		if err != nil {
+			return err
+		}
+
+		// reset job status if the job is pending.
+		res1 := tx.Model(j).Where("status = ?", api.Job_Pending).Update("status", api.Job_PlanFailed)
+		if res1.Error != nil {
+			return res1.Error
+		}
+		res2 := tx.Model(j).Where("status = ?", api.Job_ApplyPending).Update("status", api.Job_ApplyFailed)
+		if res2.Error != nil {
+			return res2.Error
+		}
+		if res1.RowsAffected > 0 || res2.RowsAffected > 0 {
+			err := tx.unlock(project, workspace)
+			if err != nil {
+				return err
+			}
+
+			err = tx.Delete(&database.Queue{}, "project = ? AND workspace = ?", project, workspace).Error
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		// send cancel signal if the job is in progress
+		err = tx.Select("status").Take(j, j.ID).Error
+		if err != nil {
+			return err
+		}
+		if j.Status == int32(api.Job_PlanInProgress) || j.Status == int32(api.Job_ApplyInProgress) {
+			s.actionControls <- &api.GetActionControlResponse{
+				Type:      api.GetActionControlResponse_CANCEL,
+				Project:   project,
+				Workspace: workspace,
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	return &api.ApproveJobResponse{}, nil
+	return &api.CancelJobResponse{}, nil
 }
 
 func (s *Web) GetJob(_ context.Context, req *api.GetJobRequest) (*api.GetJobResponse, error) {

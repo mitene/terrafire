@@ -270,6 +270,46 @@ export namespace ApproveJobRequest {
   }
 }
 
+export class CancelJobResponse extends jspb.Message {
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): CancelJobResponse.AsObject;
+  static toObject(includeInstance: boolean, msg: CancelJobResponse): CancelJobResponse.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: CancelJobResponse, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): CancelJobResponse;
+  static deserializeBinaryFromReader(message: CancelJobResponse, reader: jspb.BinaryReader): CancelJobResponse;
+}
+
+export namespace CancelJobResponse {
+  export type AsObject = {
+  }
+}
+
+export class CancelJobRequest extends jspb.Message {
+  getProject(): string;
+  setProject(value: string): void;
+
+  getWorkspace(): string;
+  setWorkspace(value: string): void;
+
+  serializeBinary(): Uint8Array;
+  toObject(includeInstance?: boolean): CancelJobRequest.AsObject;
+  static toObject(includeInstance: boolean, msg: CancelJobRequest): CancelJobRequest.AsObject;
+  static extensions: {[key: number]: jspb.ExtensionFieldInfo<jspb.Message>};
+  static extensionsBinary: {[key: number]: jspb.ExtensionFieldBinaryInfo<jspb.Message>};
+  static serializeBinaryToWriter(message: CancelJobRequest, writer: jspb.BinaryWriter): void;
+  static deserializeBinary(bytes: Uint8Array): CancelJobRequest;
+  static deserializeBinaryFromReader(message: CancelJobRequest, reader: jspb.BinaryReader): CancelJobRequest;
+}
+
+export namespace CancelJobRequest {
+  export type AsObject = {
+    project: string,
+    workspace: string,
+  }
+}
+
 export class ApproveJobResponse extends jspb.Message {
   serializeBinary(): Uint8Array;
   toObject(includeInstance?: boolean): ApproveJobResponse.AsObject;

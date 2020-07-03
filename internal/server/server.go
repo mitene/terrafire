@@ -13,31 +13,34 @@ import (
 )
 
 type Server struct {
-	web       *Web
-	scheduler *Scheduler
+	web         *Web
+	scheduler   *Scheduler
+	jobObserver *JobObserver
 }
 
 func New(projects map[string]*api.Project, db *DB, git utils.Git) *Server {
-	actions := make(chan *api.GetActionResponse, 100)
 	actionControls := make(chan *api.GetActionControlResponse, 100)
 
 	web := &Web{
-		projects:   projects,
-		workspaces: map[string]map[string]*api.Workspace{},
-		actions:    actions,
-		db:         db,
-		git:        git,
+		projects:       projects,
+		workspaces:     map[string]map[string]*api.Workspace{},
+		actionControls: actionControls,
+		db:             db,
+		git:            git,
 	}
 
 	scheduler := &Scheduler{
-		actions:        actions,
 		actionControls: actionControls,
 		db:             db,
+		mtx:            utils.NewMutex(),
 	}
 
+	jobObserver := &JobObserver{db: db}
+
 	return &Server{
-		web:       web,
-		scheduler: scheduler,
+		web:         web,
+		scheduler:   scheduler,
+		jobObserver: jobObserver,
 	}
 }
 
@@ -82,4 +85,9 @@ func (s *Server) StartScheduler(address string) error {
 	}
 
 	return server.Serve(lis)
+}
+
+func (s *Server) StartJobObserver() error {
+	s.jobObserver.Start()
+	return nil
 }

@@ -58,6 +58,15 @@ type WebApproveJob = {
   readonly responseType: typeof web_pb.ApproveJobResponse;
 };
 
+type WebCancelJob = {
+  readonly methodName: string;
+  readonly service: typeof Web;
+  readonly requestStream: false;
+  readonly responseStream: false;
+  readonly requestType: typeof web_pb.CancelJobRequest;
+  readonly responseType: typeof web_pb.CancelJobResponse;
+};
+
 export class Web {
   static readonly serviceName: string;
   static readonly ListProjects: WebListProjects;
@@ -66,6 +75,7 @@ export class Web {
   static readonly GetJob: WebGetJob;
   static readonly SubmitJob: WebSubmitJob;
   static readonly ApproveJob: WebApproveJob;
+  static readonly CancelJob: WebCancelJob;
 }
 
 export type ServiceError = { message: string, code: number; metadata: grpc.Metadata }
@@ -153,6 +163,15 @@ export class WebClient {
   approveJob(
     requestMessage: web_pb.ApproveJobRequest,
     callback: (error: ServiceError|null, responseMessage: web_pb.ApproveJobResponse|null) => void
+  ): UnaryResponse;
+  cancelJob(
+    requestMessage: web_pb.CancelJobRequest,
+    metadata: grpc.Metadata,
+    callback: (error: ServiceError|null, responseMessage: web_pb.CancelJobResponse|null) => void
+  ): UnaryResponse;
+  cancelJob(
+    requestMessage: web_pb.CancelJobRequest,
+    callback: (error: ServiceError|null, responseMessage: web_pb.CancelJobResponse|null) => void
   ): UnaryResponse;
 }
 

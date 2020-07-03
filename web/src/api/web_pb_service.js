@@ -65,6 +65,15 @@ Web.ApproveJob = {
   responseType: web_pb.ApproveJobResponse
 };
 
+Web.CancelJob = {
+  methodName: "CancelJob",
+  service: Web,
+  requestStream: false,
+  responseStream: false,
+  requestType: web_pb.CancelJobRequest,
+  responseType: web_pb.CancelJobResponse
+};
+
 exports.Web = Web;
 
 function WebClient(serviceHost, options) {
@@ -232,6 +241,37 @@ WebClient.prototype.approveJob = function approveJob(requestMessage, metadata, c
     callback = arguments[1];
   }
   var client = grpc.unary(Web.ApproveJob, {
+    request: requestMessage,
+    host: this.serviceHost,
+    metadata: metadata,
+    transport: this.options.transport,
+    debug: this.options.debug,
+    onEnd: function (response) {
+      if (callback) {
+        if (response.status !== grpc.Code.OK) {
+          var err = new Error(response.statusMessage);
+          err.code = response.status;
+          err.metadata = response.trailers;
+          callback(err, null);
+        } else {
+          callback(null, response.message);
+        }
+      }
+    }
+  });
+  return {
+    cancel: function () {
+      callback = null;
+      client.close();
+    }
+  };
+};
+
+WebClient.prototype.cancelJob = function cancelJob(requestMessage, metadata, callback) {
+  if (arguments.length === 2) {
+    callback = arguments[1];
+  }
+  var client = grpc.unary(Web.CancelJob, {
     request: requestMessage,
     host: this.serviceHost,
     metadata: metadata,

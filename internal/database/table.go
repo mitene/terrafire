@@ -27,6 +27,14 @@ type Lock struct {
 	Workspace string `gorm:"primary_key"`
 }
 
+type Queue struct {
+	gorm.Model
+
+	Project   string
+	Workspace string
+	Action    int32
+}
+
 type Workspace struct {
 	gorm.Model
 

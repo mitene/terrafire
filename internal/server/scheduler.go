@@ -6,24 +6,57 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/database"
+	"github.com/mitene/terrafire/internal/utils"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"time"
 )
 
 type Scheduler struct {
-	actions        chan *api.GetActionResponse
 	actionControls chan *api.GetActionControlResponse
 	db             *DB
+	mtx            *utils.Mutex
 }
 
+var (
+	ErrInvalidStateTransition = fmt.Errorf("invalid state transition")
+)
+
 func (s *Scheduler) GetAction(ctx context.Context, _ *api.GetActionRequest) (*api.GetActionResponse, error) {
-	select {
-	case a := <-s.actions:
-		return a, nil
-	case <-ctx.Done():
+	cancel := func() (*api.GetActionResponse, error) {
 		log.Info("connection closed")
 		return nil, status.Errorf(codes.Canceled, "connection closed")
+	}
+
+	select {
+	case s.mtx.Lock() <- nil:
+		return func() (resp *api.GetActionResponse, err error) {
+			defer func() { s.mtx.UnLock() }()
+
+			for {
+				err = s.db.Transaction(func(tx *DB) error {
+					resp, err = tx.dequeue()
+					return err
+				})
+				if err != nil {
+					return nil, err
+				}
+
+				if resp == nil {
+					select {
+					case <-time.After(3 * time.Second):
+						continue
+					case <-ctx.Done():
+						return cancel()
+					}
+				}
+
+				return resp, nil
+			}
+		}()
+	case <-ctx.Done():
+		return cancel()
 	}
 }
 
@@ -42,6 +75,7 @@ func (s *Scheduler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusR
 	workspace := req.GetWorkspace()
 
 	values := map[string]interface{}{"status": req.GetStatus()}
+	var allowed []api.Job_Status
 	unlock := false
 	hook := func(tx *DB, job *database.Job) error { return nil }
 
@@ -50,8 +84,10 @@ func (s *Scheduler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusR
 		return nil, fmt.Errorf("unsupported job status: %s", req.GetStatus().String())
 
 	case api.Job_PlanInProgress:
+		allowed = []api.Job_Status{api.Job_Pending}
 
 	case api.Job_ReviewRequired:
+		allowed = []api.Job_Status{api.Job_PlanInProgress}
 		values["plan_result"] = req.GetResult()
 		values["project_version"] = req.GetProjectVersion()
 		values["workspace_version"] = req.GetWorkspaceVersion()
@@ -59,12 +95,15 @@ func (s *Scheduler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusR
 		unlock = true
 
 	case api.Job_PlanFailed:
+		allowed = []api.Job_Status{api.Job_Pending, api.Job_PlanInProgress}
 		values["error"] = req.GetError()
 		unlock = true
 
 	case api.Job_ApplyInProgress:
+		allowed = []api.Job_Status{api.Job_ApplyPending}
 
 	case api.Job_Succeeded:
+		allowed = []api.Job_Status{api.Job_ApplyInProgress}
 		unlock = true
 		hook = func(tx *DB, job *database.Job) error {
 			err := tx.Take(job, job.ID).Error
@@ -78,25 +117,16 @@ func (s *Scheduler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusR
 					Workspace: workspace,
 				}).Error
 			} else {
-				return tx.Model(&database.Workspace{}).Where(&database.Workspace{
-					Project:   project,
-					Workspace: workspace,
-				}).Update(&database.Workspace{
-					LastJobId: &job.ID,
-				}).Error
+				return tx.updateLastJob(project, workspace, job.ID)
 			}
 		}
 
 	case api.Job_ApplyFailed:
+		allowed = []api.Job_Status{api.Job_ApplyPending, api.Job_ApplyInProgress}
 		values["error"] = req.GetError()
 		unlock = true
 		hook = func(tx *DB, job *database.Job) error {
-			return tx.Model(&database.Workspace{}).Where(&database.Workspace{
-				Project:   project,
-				Workspace: workspace,
-			}).Update(&database.Workspace{
-				LastJobId: &job.ID,
-			}).Error
+			return tx.updateLastJob(project, workspace, job.ID)
 		}
 
 	default:
@@ -109,9 +139,12 @@ func (s *Scheduler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusR
 			return err
 		}
 
-		err = tx.Model(j).Updates(values).Error
-		if err != nil {
-			return err
+		res := tx.Model(j).Where("status IN (?)", allowed).Updates(values)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrInvalidStateTransition
 		}
 
 		err = hook(tx, j)
@@ -128,6 +161,9 @@ func (s *Scheduler) UpdateJobStatus(_ context.Context, req *api.UpdateJobStatusR
 
 		return nil
 	})
+	if err == ErrInvalidStateTransition {
+		return nil, status.New(codes.Aborted, "invalid state transition").Err()
+	}
 	if err != nil {
 		return nil, err
 	}

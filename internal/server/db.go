@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/database"
 	"os"
 	"path/filepath"
@@ -36,7 +37,7 @@ func NewDB(driver string, address string) (*DB, error) {
 	//db.LogMode(true)
 
 	// schema migration
-	db.AutoMigrate(&database.Workspace{}, &database.Job{}, &database.Lock{})
+	db.AutoMigrate(&database.Workspace{}, &database.Job{}, &database.Lock{}, &database.Queue{})
 
 	return &DB{db}, nil
 }
@@ -61,10 +62,54 @@ func (s *DB) unlock(project string, workspace string) error {
 
 func (s *DB) getJob(project string, workspace string) (*database.Job, error) {
 	ws := &database.Workspace{Project: project, Workspace: workspace}
-	r := s.Select("job_id").First(ws, ws)
-	if r.Error != nil {
-		return nil, r.Error
+	err := s.Select("job_id").Take(ws, ws).Error
+	if err != nil {
+		return nil, err
 	}
 
 	return &database.Job{Model: gorm.Model{ID: ws.JobId}}, nil
+}
+
+func (s *DB) updateLastJob(project string, workspace string, jobId uint) error {
+	return s.Model(&database.Workspace{}).Where(&database.Workspace{
+		Project:   project,
+		Workspace: workspace,
+	}).Update(&database.Workspace{
+		LastJobId: &jobId,
+	}).Error
+}
+
+func (s *DB) enqueue(m *api.GetActionResponse) error {
+	return s.Create(&database.Queue{
+		Project:   m.GetProject(),
+		Workspace: m.GetWorkspace(),
+		Action:    int32(m.GetType()),
+	}).Error
+}
+
+func (s *DB) dequeue() (*api.GetActionResponse, error) {
+	for {
+		q := &database.Queue{}
+		r := s.First(q)
+		if r.RecordNotFound() {
+			return nil, nil
+		}
+		if r.Error != nil {
+			return nil, r.Error
+		}
+
+		r = s.Delete(q)
+		if r.Error != nil {
+			return nil, r.Error
+		}
+		if r.RowsAffected == 0 {
+			continue
+		}
+
+		return &api.GetActionResponse{
+			Type:      api.GetActionResponse_Type(q.Action),
+			Project:   q.Project,
+			Workspace: q.Workspace,
+		}, nil
+	}
 }

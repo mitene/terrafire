@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
 	"github.com/mitene/terrafire/internal/api"
 	"github.com/mitene/terrafire/internal/controller"
 	"github.com/mitene/terrafire/internal/runner"
@@ -9,6 +10,7 @@ import (
 	"github.com/mitene/terrafire/internal/utils"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"time"
 )
 
 func main() {
@@ -58,6 +60,7 @@ func startServer(_ *cobra.Command, _ []string) error {
 	srv := server.New(config.Projects, db, git)
 
 	go func() { utils.LogError(srv.StartScheduler(fmt.Sprintf(":%d", config.SchedulerPort))) }()
+	go func() { utils.LogError(srv.StartJobObserver()) }()
 
 	return srv.StartWeb(fmt.Sprintf(":%d", config.ServerPort))
 }
@@ -68,11 +71,10 @@ func startController(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-	conn, err := grpc.Dial(config.SchedulerAddress, grpc.WithInsecure())
+	client, err := newSchedulerClient(config.SchedulerAddress)
 	if err != nil {
 		return err
 	}
-	client := api.NewSchedulerClient(conn)
 
 	ctrl := controller.New(client, config.Executor, config.Concurrency)
 
@@ -89,11 +91,10 @@ func startRunner(_ *cobra.Command, args []string) error {
 	project := args[1]
 	workspace := args[2]
 
-	conn, err := grpc.Dial(config.SchedulerAddress, grpc.WithInsecure())
+	client, err := newSchedulerClient(config.SchedulerAddress)
 	if err != nil {
 		return err
 	}
-	client := api.NewSchedulerClient(conn)
 
 	tf := runner.NewTerraform()
 	git := utils.NewGit(config.Repos)
@@ -108,4 +109,28 @@ func startRunner(_ *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("invalid command: %s", phase)
 	}
+}
+
+func newSchedulerClient(address string) (api.SchedulerClient, error) {
+	retryOpts := []grpc_retry.CallOption{
+		grpc_retry.WithBackoff(func(attempt uint) time.Duration {
+			if attempt > 10 {
+				return 30 * time.Second
+			} else {
+				return time.Duration(attempt) * 2 * time.Second
+			}
+		}),
+	}
+
+	conn, err := grpc.Dial(address,
+		grpc.WithStreamInterceptor(grpc_retry.StreamClientInterceptor(retryOpts...)),
+		grpc.WithUnaryInterceptor(grpc_retry.UnaryClientInterceptor(retryOpts...)),
+		grpc.WithInsecure(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	client := api.NewSchedulerClient(conn)
+	return client, nil
 }

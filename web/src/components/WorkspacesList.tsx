@@ -3,7 +3,7 @@ import Grid from "@material-ui/core/Grid";
 import Title from "./Title";
 import {Link as RouterLink} from "react-router-dom";
 import React from "react";
-import * as globalStyle from "./styles"
+import {useCommonStyles} from "./styles"
 import CardActionArea from "@material-ui/core/CardActionArea";
 import {CardContent} from "@material-ui/core";
 import Card from "@material-ui/core/Card";
@@ -18,7 +18,7 @@ type Props = {
 export const WorkspacesList: React.FC<Props> = (props) => {
     const project = props.project;
 
-    const classes = globalStyle.useStyles();
+    const classes = useCommonStyles();
     const wss = useWorkspaces(project, props.ts);
 
     return (
