@@ -1,0 +1,21 @@
+version: "3"
+services:
+  server:
+    image: "mitene/terrafire:${TAG:-latest}"
+    command: ["server"]
+    environment:
+      TERRAFIRE_PROJECT_default: "https://github.com/mitene/terrafire-sample"
+      TERRAFIRE_PROJECT_default_PATH: "sample/manifest"
+      TERRAFIRE_PROJECT_default_BRANCH: "${BRANCH:-master}"
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+
+  controller:
+    image: "mitene/terrafire:${TAG:-latest}"
+    command: ["controller"]
+    environment:
+      TERRAFIRE_SCHEDULER_ADDRESS: "http://server:8081"
+      TERRAFIRE_PROJECT_default: "https://github.com/mitene/terrafire-sample"
+      TERRAFIRE_PROJECT_default_PATH: "sample/manifest"
+      TERRAFIRE_PROJECT_default_BRANCH: "${BRANCH:-master}"
