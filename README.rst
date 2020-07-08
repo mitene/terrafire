@@ -40,7 +40,7 @@ Start services:
 
     docker-compose up
 
-Now, you can access to <http://localhost:8080>.
+Now, open http://localhost:8080
 
 *************
 Configuration
