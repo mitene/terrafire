@@ -33,7 +33,7 @@ func GetSrvConfig() (config *srvConfig, err error) {
 	config.ServerPort = envs.GetInt("TERRAFIRE_SERVER_PORT", 8080)
 	config.SchedulerPort = envs.GetInt("TERRAFIRE_SCHEDULER_PORT", 8081)
 	config.DbDriver = envs.Get("TERRAFIRE_DB_DRIVER", "sqlite3")
-	config.DbAddress = envs.Get("TERRAFIRE_DB_ADDRESS", "sqlite3.db")
+	config.DbAddress = envs.Get("TERRAFIRE_DB_ADDRESS", "data/sqlite3.db")
 
 	config.Projects, err = envs.GetProjects()
 	if err != nil {
@@ -115,7 +115,7 @@ func GetRunnerConfig() (config *runnerConfig, err error) {
 
 	switch bt := envs.Get("TERRAFIRE_BLOB_TYPE", "local"); bt {
 	case "local":
-		root := envs.Get("TERRAFIRE_BLOB_LOCAL_ROOT", "")
+		root := envs.Get("TERRAFIRE_BLOB_LOCAL_ROOT", "data/blob")
 		if root == "" {
 			return nil, fmt.Errorf("TERRAFIRE_BLOB_LOCAL_ROOT is required")
 		}

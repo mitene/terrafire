@@ -27,8 +27,13 @@ test:
 fmt:
 	go fmt $(ALL)
 
-.PHONY: push-docker-dev
-push-docker-dev:
-	docker build . -t terrafire -f build/package/Dockerfile
-	docker tag terrafire mitene/terrafire:dev-$$(git symbolic-ref --short HEAD)
+# docker-dev
+
+.PHONY: docker-dev/build
+docker-dev/build:
+	docker build . -t mitene/terrafire:dev -f build/package/Dockerfile
+
+.PHONY: docker-dev/push
+docker-dev/push: docker-dev/build
+	docker tag mitene/terrafire:dev mitene/terrafire:dev-$$(git symbolic-ref --short HEAD)
 	docker push mitene/terrafire:dev-$$(git symbolic-ref --short HEAD)
