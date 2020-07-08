@@ -73,31 +73,31 @@ server config
 
     *Default*: ``data/sqlite3.db``
 
-:TERRAFIRE_PROJECT_<project name>: Terrafire manifest repository URL. (**required**)
+:TERRAFIRE_PROJECT_<project_name>: Terrafire manifest repository URL. (**required**)
 
     Supported repository is GitHub only currently.
 
-:TERRAFIRE_PROJECT_<project name>_BRANCH: Branch name of manifest repository.
+:TERRAFIRE_PROJECT_<project_name>_BRANCH: Branch name of manifest repository.
 
     *Default*: ``master``
 
-:TERRAFIRE_PROJECT_<project name>_PATH: Relative path from manifest repository root. (optional)
+:TERRAFIRE_PROJECT_<project_name>_PATH: Relative path from manifest repository root. (optional)
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_PROTOCOL: Git credentials protocol.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_PROTOCOL: Git credentials protocol.
 
     Required if you have private repository.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_HOST: Git credentials host.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_HOST: Git credentials host.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_USER: Git credentials user.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_USER: Git credentials user.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_PASSWORD: Git credentials password.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_PASSWORD: Git credentials password.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
@@ -151,17 +151,17 @@ runner config
 
     *Default*: ``localhost:8081``
 
-:TERRAFIRE_PROJECT_<project name>: Terrafire manifest repository URL. (**required**)
+:TERRAFIRE_PROJECT_<project_name>: Terrafire manifest repository URL. (**required**)
 
     Supported repository is GitHub only currently.
 
-:TERRAFIRE_PROJECT_<project name>_BRANCH: Branch name of manifest repository.
+:TERRAFIRE_PROJECT_<project_name>_BRANCH: Branch name of manifest repository.
 
     *Default*: ``master``
 
-:TERRAFIRE_PROJECT_<project name>_PATH: Relative path from manifest repository root. (optional)
+:TERRAFIRE_PROJECT_<project_name>_PATH: Relative path from manifest repository root. (optional)
 
-:TERRAFIRE_PROJECT_<project name>_ENV_<var name>: Environment values applied when terraform plan/apply are executed.
+:TERRAFIRE_PROJECT_<project_name>_ENV_<var name>: Environment values applied when terraform plan/apply are executed.
 
 :TERRAFIRE_BLOB_TYPE: Blob type.
 
@@ -187,21 +187,21 @@ runner config
 
     *Default*: ``""``
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_PROTOCOL: Git credentials protocol.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_PROTOCOL: Git credentials protocol.
 
     Required if you have private repository.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_HOST: Git credentials host.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_HOST: Git credentials host.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_USER: Git credentials user.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_USER: Git credentials user.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
-:TERRAFIRE_GIT_CREDENTIAL_<credential id>_PASSWORD: Git credentials password.
+:TERRAFIRE_GIT_CREDENTIAL_<credential_id>_PASSWORD: Git credentials password.
 
     See https://git-scm.com/book/en/v2/Git-Tools-Credential-Storage
 
@@ -209,38 +209,10 @@ runner config
 Development
 ***********
 
-Build
-=====
+See `development <docs/development.rst>`_.
 
-First, install Go and npm.
+*******
+License
+*******
 
-You can build the terrafire executable:
-
-.. code-block:: bash
-
-    make -C web setup # install npm packages
-    make build
-
-``make build`` command builds javascript assets, embeds them into Go project (using go.rice), and compiles Go sources.
-See Makefile for details.
-
-Update Protocol Buffer
-======================
-
-Terrafire uses gRPC for internal communication.
-Proto files are placed in ``api`` directory.
-
-Generated codes by protocol buffer are included in version control system.
-So, if you update proto files, run the following command and commit auto generated codes.
-
-.. code-block:: bash
-
-    make proto
-
-Build With
-==========
-
-* `go.rice <https://github.com/GeertJohan/go.rice>`_
-* `gorm <https://github.com/go-gorm/gorm>`_
-* gRPC
-* `React <https://reactjs.org/>`_
+This project is licensed under the MIT License - see the `LICENSE <LICENSE>`_ file for details.
