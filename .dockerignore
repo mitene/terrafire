@@ -1,0 +1,8 @@
+/dist
+/data
+/web/build
+/web/node_modules
+.idea/
+.env
+.envrc
+rice-box.go

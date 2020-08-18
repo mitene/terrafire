@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+import "common.proto";
+
+option go_package = "github.com/mitene/terrafire/internal/api";
+
+service Scheduler {
+    rpc GetAction (GetActionRequest) returns (GetActionResponse) {}
+    rpc GetActionControl (GetActionControlRequest) returns (GetActionControlResponse) {}
+    rpc UpdateJobStatus (UpdateJobStatusRequest) returns (UpdateJobStatusResponse) {}
+    rpc UpdateJobLog (UpdateJobLogRequest) returns (UpdateJobLogResponse) {}
+    rpc GetWorkspaceVersion (GetWorkspaceVersionRequest) returns (GetWorkspaceVersionResponse) {}
+}
+
+message GetActionRequest {
+}
+
+message GetActionResponse {
+    enum Type {
+        NONE = 0;
+        SUBMIT = 1;
+        APPROVE = 2;
+    }
+    Type type = 1;
+    string project = 2;
+    string workspace = 3;
+}
+
+message GetActionControlRequest {
+}
+
+message GetActionControlResponse {
+    enum Type {
+        NONE = 0;
+        CANCEL = 1;
+    }
+    Type type = 1;
+    string project = 2;
+    string workspace = 3;
+}
+
+message UpdateJobStatusRequest {
+    string project = 1;
+    string workspace = 2;
+    Job.Status status = 3;
+    string result = 8;
+    string error = 9;
+    string project_version = 10;
+    string workspace_version = 11;
+    bool destroy = 12;
+}
+
+message UpdateJobStatusResponse {
+}
+
+message UpdateJobLogRequest {
+    string project = 1;
+    string workspace = 2;
+    Phase phase = 3;
+    string log = 4;
+}
+
+message UpdateJobLogResponse {
+}
+
+message GetWorkspaceVersionRequest {
+    string project = 1;
+    string workspace = 2;
+}
+
+message GetWorkspaceVersionResponse {
+    string project_version = 1;
+    string workspace_version = 2;
+}

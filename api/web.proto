@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+import "common.proto";
+
+option go_package = "github.com/mitene/terrafire/internal/api";
+
+service Web {
+    rpc ListProjects (ListProjectsRequest) returns (ListProjectsResponse) {}
+    rpc RefreshProject (RefreshProjectRequest) returns (RefreshProjectResponse) {}
+    rpc ListWorkspaces (ListWorkspacesRequest) returns (ListWorkspacesResponse) {}
+    rpc GetJob (GetJobRequest) returns (GetJobResponse) {}
+    rpc SubmitJob (SubmitJobRequest) returns (SubmitJobResponse) {}
+    rpc ApproveJob (ApproveJobRequest) returns (ApproveJobResponse) {}
+    rpc CancelJob (CancelJobRequest) returns (CancelJobResponse) {}
+}
+
+message ListProjectsRequest {
+}
+
+message ListProjectsResponse {
+    message Project {
+        string name = 1;
+    }
+    repeated Project projects = 1;
+}
+
+message RefreshProjectRequest {
+    string project = 1;
+}
+
+message RefreshProjectResponse {
+}
+
+message ListWorkspacesRequest {
+    string project = 1;
+}
+
+message ListWorkspacesResponse {
+    message Workspace {
+        string name = 1;
+    }
+    repeated Workspace workspaces = 1;
+}
+
+message GetJobRequest {
+    string project = 1;
+    string workspace = 2;
+}
+
+message GetJobResponse {
+    Job job = 1;
+}
+
+message SubmitJobRequest {
+    string project = 1;
+    string workspace = 2;
+}
+
+message SubmitJobResponse {
+}
+
+message ApproveJobRequest {
+    string project = 1;
+    string workspace = 2;
+}
+
+message CancelJobResponse {
+}
+
+message CancelJobRequest {
+    string project = 1;
+    string workspace = 2;
+}
+
+message ApproveJobResponse {
+}
