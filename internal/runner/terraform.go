@@ -75,11 +75,12 @@ func (t *TerraformImpl) Plan(option TerraformOption, workspace string, vars []st
 func (t *TerraformImpl) Apply(option TerraformOption, destroy bool) error {
 	_, _ = fmt.Fprintln(option.out, "\n---- apply -------------------------------------------------------------")
 	err := t.newCmd(option, "apply", "-no-color", "-input=false", "tfplan").Run()
-	if err != nil {
+	if !destroy && err != nil {
 		return fmt.Errorf("terraform apply failed: %w", err)
 	}
 
 	if destroy {
+		_, _ = fmt.Fprintln(option.out, "\n---- check resources ---------------------------------------------------")
 		cmd := t.newCmd(option, "state", "list")
 		cmd.Stdout = nil
 		result, err := cmd.Output()
@@ -87,6 +88,7 @@ func (t *TerraformImpl) Apply(option TerraformOption, destroy bool) error {
 			return err
 		}
 		if len(bytes.TrimSpace(result)) != 0 {
+			_, _ = fmt.Fprintf(option.out, "resources remain left in workspace: %s\n", result)
 			return fmt.Errorf("resources remain left in workspace: %s", result)
 		}
 
