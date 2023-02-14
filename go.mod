@@ -4,11 +4,9 @@ go 1.14
 
 require (
 	github.com/GeertJohan/go.rice v1.0.0
-	github.com/akavel/rsrc v0.9.0 // indirect
-	github.com/aws/aws-sdk-go v1.32.3
+	github.com/aws/aws-sdk-go v1.34.0
 	github.com/daaku/go.zipexe v1.0.1 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
-	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang/protobuf v1.4.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 	github.com/hashicorp/hcl/v2 v2.3.0
@@ -17,7 +15,6 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/labstack/gommon v0.3.0 // indirect
 	github.com/mattn/go-sqlite3 v2.0.1+incompatible
-	github.com/nkovacs/streamquote v1.0.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
